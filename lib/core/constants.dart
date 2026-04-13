@@ -36,6 +36,6 @@ class AppConstants {
   static const String roleEmployee = 'employee';
 
   // ── App info ─────────────────────────────────────────────
-  static const String appName = 'AbsensiKu';
+  static const String appName = 'GAPS';
   static const String appVersion = '1.0.0';
 }

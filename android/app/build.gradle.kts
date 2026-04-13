@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.absensi.absensi_karyawan"
+    namespace = "com.absensi.absensikaryawan"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -24,10 +24,10 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.absensi.absensi_karyawan"
+        applicationId = "com.absensi.absensikaryawan"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 21
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

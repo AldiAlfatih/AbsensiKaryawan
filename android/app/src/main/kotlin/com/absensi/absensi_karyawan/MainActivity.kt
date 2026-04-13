@@ -1,4 +1,4 @@
-package com.absensi.absensi_karyawan
+package com.absensi.absensikaryawan
 
 import io.flutter.embedding.android.FlutterActivity
 

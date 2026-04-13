@@ -12,7 +12,7 @@ class AbsensiApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'AbsensiKu',
+      title: 'GAPS',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routerConfig: router,

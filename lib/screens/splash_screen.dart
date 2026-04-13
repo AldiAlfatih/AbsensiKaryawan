@@ -71,10 +71,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: AppRadius.xl,
               ),
-              child: const Icon(
-                Icons.fingerprint_rounded,
-                size: 52,
-                color: Colors.white,
+              child: ClipRRect(
+                borderRadius: AppRadius.xl,
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 52,
+                  height: 52,
+                  fit: BoxFit.cover,
+                ),
               ),
             )
                 .animate()
@@ -103,7 +107,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             const SizedBox(height: 8),
 
             Text(
-              'Absensi Pintar & Aman',
+              'Geo Attendance Positioning System',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.white.withValues(alpha: 0.7),
                   ),

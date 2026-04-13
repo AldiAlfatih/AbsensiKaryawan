@@ -60,8 +60,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _seedLoading = false;
       _seedMessage =
           'Akun demo berhasil dibuat!\n'
-          'Admin  → NIK: ADM001 / password123\n'
-          'Karyawan → NIK: EMP001 / password123';
+          'Admin  → NIK: ADM001 / 12345678\n'
+          'Karyawan → NIK: EMP001 / 1234567823';
     });
   }
 
@@ -99,10 +99,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           borderRadius: AppRadius.lg,
                           boxShadow: AppShadows.button,
                         ),
-                        child: const Icon(
-                          Icons.fingerprint_rounded,
-                          size: 44,
-                          color: Colors.white,
+                        child: ClipRRect(
+                          borderRadius: AppRadius.lg,
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ).animate().scale(
                             begin: const Offset(0.8, 0.8),
@@ -116,7 +120,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ).animate(delay: 100.ms).fadeIn().slideY(begin: 0.2),
                       const SizedBox(height: 6),
                       Text(
-                        'Masuk dengan NIK dan password Anda',
+                        'Geo Attendance Positioning System',
+                        textAlign: TextAlign.center,
                         style:
                             Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: AppColors.textSecondary,

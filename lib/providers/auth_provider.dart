@@ -133,17 +133,19 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> seedDemoAccounts() async {
     state = const AsyncValue.loading();
     try {
-      await _dbService.initSettings(AppSettings(
-        pointValue: AppConstants.defaultPointValue,
-        allowedRadius: AppConstants.defaultGeofenceRadius,
-      ));
-
       // Admin (NIK: ADM001)
       await _seedAccount(
         nik: 'ADM001',
         name: 'Admin Utama',
         role: AppConstants.roleAdmin,
       );
+
+      // Now that we have logged in as Admin during the _seedAccount step,
+      // we have the 'auth != null' permission to write to settings/global.
+      await _dbService.initSettings(AppSettings(
+        pointValue: AppConstants.defaultPointValue,
+        allowedRadius: AppConstants.defaultGeofenceRadius,
+      ));
 
       // Employee (NIK: EMP001)
       await _seedAccount(
@@ -165,7 +167,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
     required String nik,
     required String name,
     required String role,
-    String password = 'password123',
+    String password = '12345678',
   }) async {
     final email = nikToEmail(nik);
     UserCredential cred;
