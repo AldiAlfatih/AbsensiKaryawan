@@ -4,6 +4,8 @@ import '../core/constants.dart';
 import '../models/app_settings.dart';
 import '../models/app_user.dart';
 import '../models/attendance.dart';
+import '../models/leave.dart';
+import '../models/report.dart';
 
 // ─────────────────────────────────────────────────────────
 // REALTIME DATABASE TREE STRUCTURE
@@ -39,6 +41,8 @@ class DatabaseService {
   DatabaseReference get _usersRef => _db.ref(AppConstants.usersPath);
   DatabaseReference get _attendanceRef => _db.ref(AppConstants.attendancePath);
   DatabaseReference get _settingsRef => _db.ref(AppConstants.settingsGlobalPath);
+  DatabaseReference get _reportsRef => _db.ref(AppConstants.reportsPath);
+  DatabaseReference get _leavesRef => _db.ref(AppConstants.leavesPath);
 
   DatabaseReference _userRef(String uid) =>
       _db.ref('${AppConstants.usersPath}/$uid');
@@ -59,6 +63,11 @@ class DatabaseService {
   /// Write default settings to /settings/global (called once during seeding).
   Future<void> initSettings(AppSettings settings) async {
     await _settingsRef.set(settings.toMap());
+  }
+
+  /// Update existing settings parameters.
+  Future<void> updateSettings(AppSettings settings) async {
+    await _settingsRef.update(settings.toMap());
   }
 
   // ── User operations ──────────────────────────────────────
@@ -106,6 +115,11 @@ class DatabaseService {
     await _userRef(user.uid).set(user.toMap());
   }
 
+  /// Delete a user from /users/{uid} (Soft Delete).
+  Future<void> deleteUser(String uid) async {
+    await _userRef(uid).remove();
+  }
+
   /// Atomically increment total_points by [delta] using a transaction.
   Future<void> incrementPoints(String uid, {int delta = 1}) async {
     await _userRef(uid).child('total_points').runTransaction((current) {
@@ -119,6 +133,11 @@ class DatabaseService {
   /// Push a new attendance record to /attendance/{pushId} (flat list).
   Future<void> addAttendance(Attendance attendance) async {
     await _attendanceRef.push().set(attendance.toMap());
+  }
+
+  /// Delete an attendance record. Used when invalidating a spoofed check-in.
+  Future<void> deleteAttendanceRecord(String recordId) async {
+    await _attendanceRef.child(recordId).remove();
   }
 
   /// Real-time stream of attendance records for a specific user, newest first.
@@ -146,9 +165,8 @@ class DatabaseService {
     });
   }
 
-  /// Check if a user has already successfully checked in today.
-  /// Fetches records by user_id and filters by today's date client-side.
-  Future<bool> hasCheckedInToday(String uid) async {
+  /// Gets the attendance record for today if the user has already checked in.
+  Future<Attendance?> getCheckInRecordToday(String uid) async {
     final now = DateTime.now();
     final startOfDay =
         DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
@@ -156,24 +174,128 @@ class DatabaseService {
         DateTime(now.year, now.month, now.day, 23, 59, 59)
             .millisecondsSinceEpoch;
 
-    // Query by user_id, then filter timestamp client-side
     final snap = await _attendanceRef
         .orderByChild('user_id')
         .equalTo(uid)
         .get();
 
-    if (!snap.exists || snap.value == null) return false;
+    if (!snap.exists || snap.value == null) return null;
 
     final data = snap.value as Map<Object?, Object?>;
-    for (final entry in data.values) {
-      final record = Map<String, dynamic>.from(entry as Map);
-      final ts = (record['timestamp'] as num?)?.toInt() ?? 0;
-      final isMock = record['is_mock_location'] as bool? ?? false;
-      // Count only non-mock records within today's window
-      if (!isMock && ts >= startOfDay && ts <= endOfDay) {
-        return true;
+    for (final entry in data.entries) {
+      final key = entry.key as String;
+      final childSnap = snap.child(key);
+      final record = Attendance.fromSnapshot(childSnap);
+      
+      final ts = record.timestamp.millisecondsSinceEpoch;
+      if (!record.isMockLocation && ts >= startOfDay && ts <= endOfDay) {
+        return record;
       }
     }
-    return false;
+    return null;
+  }
+
+  /// Check if a user has already successfully checked in today.
+  Future<bool> hasCheckedInToday(String uid) async {
+    final record = await getCheckInRecordToday(uid);
+    return record != null;
+  }
+
+  /// Processes checkout for today's active record.
+  Future<void> processCheckout(String recordId) async {
+    await _attendanceRef.child(recordId).update({
+      'is_checkout': true,
+      'check_out_timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  // ── Report operations ────────────────────────────────────
+
+  /// Submit a new report / ticket from an employee.
+  Future<void> submitReport(Report report) async {
+    await _reportsRef.push().set(report.toMap());
+  }
+
+  /// Real-time stream of all pending reports.
+  Stream<List<Report>> streamPendingReports() {
+    return _reportsRef
+        .orderByChild('status')
+        .equalTo('pending')
+        .onValue
+        .map((event) {
+      final snap = event.snapshot;
+      if (!snap.exists || snap.value == null) return <Report>[];
+
+      final records = <Report>[];
+      final data = snap.value as Map<Object?, Object?>;
+      for (final key in data.keys) {
+        records.add(Report.fromSnapshot(key as String, snap.child(key as String).value as Map<dynamic, dynamic>));
+      }
+      // Oldest first for queuing
+      records.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      return records;
+    });
+  }
+
+  /// Resolve a report with an admin response.
+  Future<void> resolveReport(String reportId, String adminResponse) async {
+    await _reportsRef.child(reportId).update({
+      'status': 'resolved',
+      'admin_response': adminResponse,
+    });
+  }
+
+  // ── Leave operations ─────────────────────────────────────
+
+  /// Submit a new leave request.
+  Future<void> submitLeave(Leave leave) async {
+    await _leavesRef.push().set(leave.toMap());
+  }
+
+  /// Real-time stream of pending leave requests for Admins.
+  Stream<List<Leave>> streamPendingLeaves() {
+    return _leavesRef
+        .orderByChild('status')
+        .equalTo('pending')
+        .onValue
+        .map((event) {
+      final snap = event.snapshot;
+      if (!snap.exists || snap.value == null) return <Leave>[];
+
+      final records = <Leave>[];
+      final data = snap.value as Map<Object?, Object?>;
+      for (final key in data.keys) {
+        records.add(Leave.fromSnapshot(key as String, snap.child(key as String).value as Map<dynamic, dynamic>));
+      }
+      records.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return records;
+    });
+  }
+
+  /// Get leave history for a specific employee.
+  Stream<List<Leave>> streamLeavesForUser(String uid) {
+    return _leavesRef
+        .orderByChild('user_id')
+        .equalTo(uid)
+        .onValue
+        .map((event) {
+      final snap = event.snapshot;
+      if (!snap.exists || snap.value == null) return <Leave>[];
+
+      final records = <Leave>[];
+      final data = snap.value as Map<Object?, Object?>;
+      for (final key in data.keys) {
+        records.add(Leave.fromSnapshot(key as String, snap.child(key as String).value as Map<dynamic, dynamic>));
+      }
+      records.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return records;
+    });
+  }
+
+  /// Resolve leave request.
+  Future<void> resolveLeave(String leaveId, String status) async {
+    await _leavesRef.child(leaveId).update({'status': status});
   }
 }
+
+

@@ -21,7 +21,8 @@ sealed class LocationResult {
 class LocationSuccess extends LocationResult {
   final Position position;
   final double distanceMeters;
-  const LocationSuccess(this.position, this.distanceMeters);
+  final String campusId;
+  const LocationSuccess(this.position, this.distanceMeters, this.campusId);
 }
 
 class LocationFailure extends LocationResult {
@@ -120,18 +121,32 @@ class LocationService {
     }
 
     // 4. Geofence
-    final distance = haversineDistance(
+    // Hitung jarak ke Kampus 1
+    final distanceToKampus1 = haversineDistance(
       lat1: position.latitude,
       lng1: position.longitude,
-      lat2: AppConstants.officeLatitude,
-      lng2: AppConstants.officeLongitude,
+      lat2: AppConstants.kampus1Lat,
+      lng2: AppConstants.kampus1Lng,
     );
+
+    // Hitung jarak ke Kampus 2
+    final distanceToKampus2 = haversineDistance(
+      lat1: position.latitude,
+      lng1: position.longitude,
+      lat2: AppConstants.kampus2Lat,
+      lng2: AppConstants.kampus2Lng,
+    );
+
+    // Ambil jarak terdekat di antara kedua kampus tersebut
+    final isKampus1Closer = distanceToKampus1 < distanceToKampus2;
+    final distance = isKampus1Closer ? distanceToKampus1 : distanceToKampus2;
+    final campusId = isKampus1Closer ? 'Kampus 1' : 'Kampus 2';
 
     if (distance > radius) {
       return OutsideGeofence(position, distance);
     }
 
-    return LocationSuccess(position, distance);
+    return LocationSuccess(position, distance, campusId);
   }
 
   /// Haversine formula — returns distance in meters between two lat/lng pairs.

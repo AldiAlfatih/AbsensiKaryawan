@@ -126,7 +126,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: AppColors.textSecondary,
                                 ),
-                        textAlign: TextAlign.center,
                       ).animate(delay: 150.ms).fadeIn(),
                     ],
                   ),

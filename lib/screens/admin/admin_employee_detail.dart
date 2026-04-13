@@ -8,21 +8,84 @@ import '../../core/theme.dart';
 import '../../models/attendance.dart';
 import '../../providers/admin_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/database_service.dart';
 
-class AdminEmployeeDetailScreen extends ConsumerWidget {
+class AdminEmployeeDetailScreen extends ConsumerStatefulWidget {
   final String uid;
   const AdminEmployeeDetailScreen({super.key, required this.uid});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminEmployeeDetailScreen> createState() => _AdminEmployeeDetailScreenState();
+}
+
+class _AdminEmployeeDetailScreenState extends ConsumerState<AdminEmployeeDetailScreen> {
+  DateTime _selectedDate = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
     // Make sure the selected employee UID is set
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(selectedEmployeeUidProvider.notifier).state = uid;
+      ref.read(selectedEmployeeUidProvider.notifier).state = widget.uid;
     });
+  }
 
+  Future<void> _selectMonth() async {
+    final now = DateTime.now();
+    // Generate up to 24 months back
+    final months = List.generate(24, (i) => DateTime(now.year, now.month - i, 1));
+    
+    final selected = await showModalBottomSheet<DateTime>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
+            const SizedBox(height: 16),
+            Text('Pilih Periode', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                itemCount: months.length,
+                itemBuilder: (ctx, i) {
+                  final date = months[i];
+                  final label = DateFormat('MMMM yyyy', 'id_ID').format(date);
+                  final isSelected = date.year == _selectedDate.year && date.month == _selectedDate.month;
+                  
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                    title: Text(label, style: TextStyle(
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                    )),
+                    trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppColors.primary) : null,
+                    onTap: () => Navigator.pop(ctx, date),
+                  );
+                }
+              )
+            ),
+          ]
+        )
+      )
+    );
+    
+    if (selected != null) {
+      if (mounted) setState(() => _selectedDate = selected);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(selectedEmployeeProfileProvider);
     final historyAsync = ref.watch(selectedEmployeeAttendanceProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
+    final monthStr = DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -93,6 +156,22 @@ class AdminEmployeeDetailScreen extends ConsumerWidget {
                         .animate(delay: 160.ms)
                         .fadeIn()
                         .slideY(begin: 0.1),
+
+                    if (profile != null) ...[
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _deleteUser(context, ref, profile),
+                          icon: const Icon(Icons.delete_forever_rounded),
+                          label: const Text('Hapus Akun Karyawan'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.error,
+                            side: const BorderSide(color: AppColors.error),
+                          ),
+                        ),
+                      ).animate(delay: 180.ms).fadeIn(),
+                    ]
                   ],
                 ),
               ),
@@ -102,10 +181,37 @@ class AdminEmployeeDetailScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-                child: Text(
-                  'Riwayat Absensi',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ).animate(delay: 200.ms).fadeIn(),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Riwayat Absensi',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ).animate(delay: 200.ms).fadeIn(),
+                    
+                    InkWell(
+                      onTap: _selectMonth,
+                      borderRadius: AppRadius.sm,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryLight,
+                          borderRadius: AppRadius.sm,
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              monthStr,
+                              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 16),
+                          ],
+                        ),
+                      ),
+                    ).animate(delay: 200.ms).fadeIn(),
+                  ],
+                ),
               ),
             ),
 
@@ -118,7 +224,12 @@ class AdminEmployeeDetailScreen extends ConsumerWidget {
                 child: Center(child: Text('Error: $e')),
               ),
               data: (list) {
-                if (list.isEmpty) {
+                final filtered = list.where((item) {
+                  final d = DateTime.fromMillisecondsSinceEpoch(item.timestamp);
+                  return d.year == _selectedDate.year && d.month == _selectedDate.month;
+                }).toList();
+
+                if (filtered.isEmpty) {
                   return SliverFillRemaining(
                     child: Center(
                       child: Column(
@@ -127,7 +238,7 @@ class AdminEmployeeDetailScreen extends ConsumerWidget {
                           const Icon(Icons.history_rounded,
                               size: 48, color: AppColors.textHint),
                           const SizedBox(height: 12),
-                          Text('Belum ada riwayat',
+                          Text('Belum ada riwayat di bulan ini',
                               style: Theme.of(context).textTheme.bodyMedium),
                         ],
                       ).animate().fadeIn(),
@@ -140,10 +251,10 @@ class AdminEmployeeDetailScreen extends ConsumerWidget {
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, i) => _AdminAttendanceItem(
-                        item: list[i],
+                        item: filtered[i],
                         index: i,
                       ),
-                      childCount: list.length,
+                      childCount: filtered.length,
                     ),
                   ),
                 );
@@ -151,6 +262,29 @@ class AdminEmployeeDetailScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _deleteUser(BuildContext context, WidgetRef ref, AppUser profile) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Permanen?'),
+        content: Text('Anda yakin ingin menghapus data ${profile.name}? Data profil akan terhapus.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final db = ref.read(databaseServiceProvider);
+              await db.deleteUser(profile.uid);
+              if (context.mounted) Navigator.pop(context); // Kembali ke list
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: const Text('Hapus Karyawan'),
+          ),
+        ],
       ),
     );
   }
@@ -260,13 +394,13 @@ class _EmployeePointsCard extends StatelessWidget {
 // ATTENDANCE ITEM (admin view)
 // ─────────────────────────────────────────────────────────
 
-class _AdminAttendanceItem extends StatelessWidget {
+class _AdminAttendanceItem extends ConsumerWidget {
   final Attendance item;
   final int index;
   const _AdminAttendanceItem({required this.item, required this.index});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final dateStr =
         DateFormat('EEE, d MMM yyyy', 'id_ID').format(item.timestamp);
     final timeStr = DateFormat('HH:mm:ss').format(item.timestamp);
@@ -336,8 +470,39 @@ class _AdminAttendanceItem extends StatelessWidget {
                   ),
             ),
           ),
+          const SizedBox(width: 10),
+          IconButton(
+            onPressed: () => _deleteAttendance(context, ref, item),
+            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
         ],
       ),
     ).animate(delay: (index * 40).ms).fadeIn().slideX(begin: 0.05);
   }
+
+  void _deleteAttendance(BuildContext context, WidgetRef ref, Attendance item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Data Absen?'),
+        content: const Text('Data absen ini akan dihapus permanen, dan 1 poin milik karyawan akan ditarik kembali.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final db = ref.read(databaseServiceProvider);
+              await db.deleteAttendanceRecord(item.id);
+              await db.incrementPoints(item.userId, delta: -1);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: const Text('Hapus & Cabut Poin'),
+          ),
+        ],
+      ),
+    );
+  }
 }
+

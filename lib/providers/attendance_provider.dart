@@ -14,15 +14,21 @@ final locationServiceProvider = Provider<LocationService>((ref) {
 
 // ── Today's check-in status ──────────────────────────────
 
-/// Whether the current user has already checked in today (successful, non-mock).
-final hasCheckedInTodayProvider = FutureProvider<bool>((ref) async {
+/// Fetches today's full check-in record.
+final todayCheckInRecordProvider = FutureProvider<Attendance?>((ref) async {
   final authState = ref.watch(authStateProvider);
   final user = authState.valueOrNull;
-  if (user == null) return false;
+  if (user == null) return null;
 
   return ref
       .watch(databaseServiceProvider)
-      .hasCheckedInToday(user.uid);
+      .getCheckInRecordToday(user.uid);
+});
+
+/// Whether the current user has already checked in today (successful, non-mock).
+final hasCheckedInTodayProvider = FutureProvider<bool>((ref) async {
+  final record = await ref.watch(todayCheckInRecordProvider.future);
+  return record != null;
 });
 
 // ── Attendance history for current user ──────────────────
@@ -113,16 +119,25 @@ class CheckInNotifier extends StateNotifier<CheckInState> {
     );
 
     switch (result) {
-      case LocationSuccess(:final position, :final distanceMeters):
+      case LocationSuccess(:final position, :final distanceMeters, :final campusId):
+        final now = DateTime.now();
+        final isLate = now.hour > 8 || (now.hour == 8 && now.minute > 30); // Late after 08:30
+
         await dbService.addAttendance(Attendance(
           id: '',
           userId: user.uid,
-          timestamp: DateTime.now(),
+          timestamp: now,
           latitude: position.latitude,
           longitude: position.longitude,
           distanceFromOffice: distanceMeters,
           isMockLocation: false,
+          campusId: campusId,
+          isLate: isLate,
+          isCheckout: false, // Initial check-in is not a checkout
         ));
+        
+        // If late, maybe we don't give points, or give 0 points? 
+        // For now, let's keep giving 1 point but Admin can review `isLate` flag.
         await dbService.incrementPoints(user.uid);
         _ref.invalidate(hasCheckedInTodayProvider);
         _ref.invalidate(currentUserProfileProvider);
@@ -144,6 +159,23 @@ class CheckInNotifier extends StateNotifier<CheckInState> {
           'Kamu berada $dist meter dari kantor. Batas: $radius meter.',
           CheckInErrorType.outsideGeofence,
         );
+    }
+  }
+
+  Future<void> checkOut(String recordId) async {
+    if (state is CheckInLoading) return;
+    state = const CheckInLoading();
+
+    final dbService = _ref.read(databaseServiceProvider);
+    
+    try {
+      await dbService.processCheckout(recordId);
+      _ref.invalidate(todayCheckInRecordProvider);
+      _ref.invalidate(hasCheckedInTodayProvider);
+      _ref.invalidate(currentUserProfileProvider);
+      state = const CheckInSuccess();
+    } catch (e) {
+      state = CheckInError('Gagal melakukan Check-Out: $e', CheckInErrorType.unknown);
     }
   }
 

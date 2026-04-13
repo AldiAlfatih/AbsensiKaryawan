@@ -8,6 +8,14 @@ import '../../core/theme.dart';
 import '../../models/app_user.dart';
 import '../../providers/admin_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../services/export_service.dart';
+import '../../core/constants.dart';
+import '../../models/app_settings.dart';
+
+import 'admin_reports_screen.dart';
+import 'admin_settings_screen.dart';
+import 'admin_leave_screen.dart';
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -17,6 +25,73 @@ class AdminDashboard extends ConsumerStatefulWidget {
 }
 
 class _AdminDashboardState extends ConsumerState<AdminDashboard> {
+  int _currentIndex = 0;
+
+  final List<Widget> _pages = [
+    const _AdminDashboardView(),
+    const AdminReportsScreen(),
+    const AdminLeaveScreen(),
+    const AdminSettingsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_currentIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          backgroundColor: Colors.white,
+          selectedItemColor: AppColors.primary,
+          unselectedItemColor: AppColors.textSecondary,
+          elevation: 0,
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.people_rounded),
+              label: 'Karyawan',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.support_agent_rounded),
+              label: 'Laporan',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.event_note_rounded),
+              label: 'Cuti & Izin',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings_rounded),
+              label: 'Pengaturan',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminDashboardView extends ConsumerStatefulWidget {
+  const _AdminDashboardView();
+
+  @override
+  ConsumerState<_AdminDashboardView> createState() => _AdminDashboardViewState();
+}
+
+class _AdminDashboardViewState extends ConsumerState<_AdminDashboardView> {
   final _searchCtrl = TextEditingController();
   String _query = '';
 
@@ -62,7 +137,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Kelola absensi karyawan',
+                            'Sistem Pusat Kendali',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
@@ -123,10 +198,29 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  'Daftar Karyawan',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ).animate(delay: 220.ms).fadeIn(),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Daftar Karyawan',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ).animate(delay: 220.ms).fadeIn(),
+                    
+                    employeesAsync.maybeWhen(
+                      data: (employees) {
+                        return IconButton(
+                          onPressed: () async {
+                            final settings = ref.read(settingsProvider).valueOrNull ?? const AppSettings(pointValue: AppConstants.defaultPointValue, allowedRadius: 50.0);
+                            await ExportService.exportEmployeeRecap(employees, settings);
+                          },
+                          icon: const Icon(Icons.download_rounded, color: AppColors.primary),
+                          tooltip: 'Ekspor Payroll (CSV)',
+                        ).animate(delay: 220.ms).fadeIn();
+                      },
+                      orElse: () => const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
               ),
             ),
 

@@ -21,6 +21,10 @@ class Attendance {
   final double longitude;
   final double distanceFromOffice;
   final bool isMockLocation;
+  final String campusId;
+  final bool isLate;
+  final bool isCheckout;
+  final int? checkOutTimestamp;
 
   const Attendance({
     required this.id,
@@ -30,6 +34,10 @@ class Attendance {
     required this.longitude,
     required this.distanceFromOffice,
     this.isMockLocation = false,
+    this.campusId = 'Unknown',
+    this.isLate = false,
+    this.isCheckout = false,
+    this.checkOutTimestamp,
   });
 
   factory Attendance.fromSnapshot(DataSnapshot snap) {
@@ -51,6 +59,10 @@ class Attendance {
       distanceFromOffice:
           (data['distance_from_office'] as num?)?.toDouble() ?? 0.0,
       isMockLocation: data['is_mock_location'] as bool? ?? false,
+      campusId: data['campus_id'] as String? ?? 'Unknown',
+      isLate: data['is_late'] as bool? ?? false,
+      isCheckout: data['is_checkout'] as bool? ?? false,
+      checkOutTimestamp: data['check_out_timestamp'] as int?,
     );
   }
 
@@ -63,5 +75,9 @@ class Attendance {
         },
         'distance_from_office': distanceFromOffice,
         'is_mock_location': isMockLocation,
+        'campus_id': campusId,
+        'is_late': isLate,
+        'is_checkout': isCheckout,
+        if (checkOutTimestamp != null) 'check_out_timestamp': checkOutTimestamp,
       };
 }

@@ -7,12 +7,13 @@
 class AppConstants {
   AppConstants._();
 
-  // ── Office Geofence ──────────────────────────────────────
-  /// Latitude of the office (center of geofence).
-  static const double officeLatitude = -6.200000;
+  /// Kampus 1: Jl. Balai Kota No. 1, Parepare
+  static const double kampus1Lat = -4.0167;
+  static const double kampus1Lng = 119.6236;
 
-  /// Longitude of the office (center of geofence).
-  static const double officeLongitude = 106.816666;
+  /// Kampus 2: Jl. Pemuda No. 6, Parepare
+  static const double kampus2Lat = -4.0264;
+  static const double kampus2Lng = 119.6289;
 
   /// Fallback radius used if /settings/global is unavailable.
   /// The live value is read from the database (settings/global/allowed_radius).
@@ -25,11 +26,13 @@ class AppConstants {
   static const String usersPath = 'users';
   static const String attendancePath = 'attendance';
   static const String settingsGlobalPath = 'settings/global';
+  static const String reportsPath = 'reports';
+  static const String leavesPath = 'leaves';
 
   // ── Auth ─────────────────────────────────────────────────
   /// Email domain appended to NIK for Firebase Auth.
   /// Login email = "${nik}${emailDomain}"
-  static const String emailDomain = '@absensi.com';
+  static const String emailDomain = '@gaps.com';
 
   // ── Roles ────────────────────────────────────────────────
   static const String roleAdmin = 'admin';

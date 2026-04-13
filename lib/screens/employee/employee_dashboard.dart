@@ -40,8 +40,8 @@ class _EmployeeDashboardView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final checkInState = ref.watch(checkInProvider);
-    final hasCheckedIn = ref.watch(hasCheckedInTodayProvider);
-    final alreadyIn = hasCheckedIn.valueOrNull ?? false;
+    final todayRecord = ref.watch(todayCheckInRecordProvider).valueOrNull;
+    final alreadyIn = todayRecord != null;
     final points = profile?.totalPoints ?? 0;
     final settings = ref.watch(settingsProvider).valueOrNull;
     final name = profile?.name ?? 'Karyawan';
@@ -160,8 +160,11 @@ class _EmployeeDashboardView extends ConsumerWidget {
                         _CheckInCard(
                           checkInState: checkInState,
                           alreadyIn: alreadyIn,
+                          todayRecord: todayRecord,
                           onCheckIn: () =>
                               ref.read(checkInProvider.notifier).checkIn(),
+                          onCheckOut: (recordId) =>
+                              ref.read(checkInProvider.notifier).checkOut(recordId),
                           onReset: () =>
                               ref.read(checkInProvider.notifier).reset(),
                         ).animate(delay: 300.ms).fadeIn().slideY(begin: 0.1),
@@ -222,13 +225,17 @@ class _EmployeeDashboardView extends ConsumerWidget {
 class _CheckInCard extends StatelessWidget {
   final CheckInState checkInState;
   final bool alreadyIn;
+  final Attendance? todayRecord;
   final VoidCallback onCheckIn;
+  final void Function(String) onCheckOut;
   final VoidCallback onReset;
 
   const _CheckInCard({
     required this.checkInState,
     required this.alreadyIn,
+    this.todayRecord,
     required this.onCheckIn,
+    required this.onCheckOut,
     required this.onReset,
   });
 
@@ -252,7 +259,11 @@ class _CheckInCard extends StatelessWidget {
           const SizedBox(height: 20),
 
           // Status message
-          _StatusMessage(checkInState: checkInState, alreadyIn: alreadyIn),
+          _StatusMessage(
+            checkInState: checkInState,
+            alreadyIn: alreadyIn,
+            todayRecord: todayRecord,
+          ),
 
           const SizedBox(height: 24),
 
@@ -260,7 +271,11 @@ class _CheckInCard extends StatelessWidget {
           _ActionButton(
             checkInState: checkInState,
             alreadyIn: alreadyIn,
+            todayRecord: todayRecord,
             onCheckIn: onCheckIn,
+            onCheckOut: () {
+              if (todayRecord != null) onCheckOut(todayRecord!.id);
+            },
             onReset: onReset,
           ),
 
@@ -352,8 +367,9 @@ class _StatusRing extends StatelessWidget {
 class _StatusMessage extends StatelessWidget {
   final CheckInState checkInState;
   final bool alreadyIn;
+  final Attendance? todayRecord;
 
-  const _StatusMessage({required this.checkInState, required this.alreadyIn});
+  const _StatusMessage({required this.checkInState, required this.alreadyIn, this.todayRecord});
 
   @override
   Widget build(BuildContext context) {
@@ -375,9 +391,15 @@ class _StatusMessage extends StatelessWidget {
         title = _errorTitle(err.type);
         subtitle = err.message;
       }
-    } else if (alreadyIn) {
-      title = 'Sudah Absen Hari Ini ✅';
-      subtitle = 'Sampai jumpa besok!';
+    } else if (alreadyIn && todayRecord != null) {
+      if (todayRecord!.isCheckout) {
+        title = 'Kerja Bagus Hari Ini! 🎉';
+        subtitle = 'Kamu sudah Check-Out. Sampai jumpa besok!';
+      } else {
+        title = 'Sudah Absen Masuk ✅';
+        final lateText = todayRecord!.isLate ? ' (Terlambat)' : '';
+        subtitle = 'Lokasi: ${todayRecord!.campusId}$lateText\nJangan lupa Check-Out saat pulang.';
+      }
     } else {
       title = 'Siap Absen?';
       subtitle = 'Tekan tombol di bawah untuk memulai verifikasi lokasi';
@@ -424,13 +446,17 @@ class _StatusMessage extends StatelessWidget {
 class _ActionButton extends StatelessWidget {
   final CheckInState checkInState;
   final bool alreadyIn;
+  final Attendance? todayRecord;
   final VoidCallback onCheckIn;
+  final VoidCallback onCheckOut;
   final VoidCallback onReset;
 
   const _ActionButton({
     required this.checkInState,
     required this.alreadyIn,
+    this.todayRecord,
     required this.onCheckIn,
+    required this.onCheckOut,
     required this.onReset,
   });
 
@@ -445,21 +471,42 @@ class _ActionButton extends StatelessWidget {
                 CheckInErrorType.alreadyCheckedIn);
 
     if (isAlreadyIn || isSuccess) {
-      return Container(
-        width: double.infinity,
-        height: 54,
-        decoration: BoxDecoration(
-          color: AppColors.successLight,
-          borderRadius: AppRadius.sm,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          'Absensi Tercatat ✓',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.success,
-              ),
-        ),
-      );
+      if (todayRecord != null && !todayRecord!.isCheckout) {
+        return SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton.icon(
+            onPressed: isLoading ? null : onCheckOut,
+            icon: const Icon(Icons.directions_run_rounded, size: 22),
+            label: const Text(
+              'Check Out Pulang',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: const RoundedRectangleBorder(borderRadius: AppRadius.sm),
+            ),
+          ),
+        );
+      } else {
+        return Container(
+          width: double.infinity,
+          height: 54,
+          decoration: BoxDecoration(
+            color: AppColors.successLight,
+            borderRadius: AppRadius.sm,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            'Check-Out Selesai ✓',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.success,
+                ),
+          ),
+        );
+      }
     }
 
     if (isError) {
@@ -600,7 +647,7 @@ class _QuickActions extends StatelessWidget {
             Expanded(
               child: _ActionTile(
                 icon: Icons.history_rounded,
-                label: 'Riwayat\nAbsensi',
+                label: 'Riwayat\nAbsen',
                 color: AppColors.primary,
                 bgColor: AppColors.primaryLight,
                 onTap: onHistory,
@@ -609,11 +656,35 @@ class _QuickActions extends StatelessWidget {
             const SizedBox(width: 14),
             Expanded(
               child: _ActionTile(
-                icon: Icons.info_outline_rounded,
-                label: '1 Poin =\nRp 35.000',
+                icon: Icons.emoji_events_rounded,
+                label: 'Papan\nPeringkat',
+                color: Colors.amber.shade700,
+                bgColor: Colors.amber.shade100,
+                onTap: () => context.push(AppRoutes.employeeLeaderboard),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _ActionTile(
+                icon: Icons.support_agent_rounded,
+                label: 'Lapor\nKendala',
+                color: AppColors.warning,
+                bgColor: AppColors.warningLight,
+                onTap: () => context.push(AppRoutes.employeeReport),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: _ActionTile(
+                icon: Icons.event_note_rounded,
+                label: 'Cuti &\nIzin',
                 color: AppColors.success,
                 bgColor: AppColors.successLight,
-                onTap: () {},
+                onTap: () => context.push(AppRoutes.employeeLeave),
               ),
             ),
           ],

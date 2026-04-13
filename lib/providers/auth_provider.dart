@@ -44,7 +44,7 @@ final currentUserProfileProvider = StreamProvider<AppUser?>((ref) {
 // ── NIK → email helper ───────────────────────────────────
 
 /// Converts a NIK to a Firebase Auth email.
-/// e.g. "EMP001" → "EMP001@absensi.com"
+/// e.g. "EMP001" → "EMP001@gaps.com"
 String nikToEmail(String nik) =>
     '${nik.trim().toUpperCase()}${AppConstants.emailDomain}';
 
@@ -52,7 +52,7 @@ String nikToEmail(String nik) =>
 
 class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   AuthNotifier(this._authService, this._dbService)
-      : super(const AsyncValue.data(null));
+    : super(const AsyncValue.data(null));
 
   final AuthService _authService;
   final DatabaseService _dbService;
@@ -60,7 +60,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   // ── Login ────────────────────────────────────────────────
 
   /// Signs in using [nik] and [password].
-  /// Firebase Auth email is constructed internally as [nik]@absensi.com.
+  /// Firebase Auth email is constructed internally as [nik]@gaps.com.
   /// Returns the [AppUser] profile on success, null on failure.
   Future<AppUser?> signIn({
     required String nik,
@@ -76,7 +76,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       return profile;
     } on FirebaseAuthException catch (e) {
-      state = AsyncValue.error(AuthService.friendlyError(e), StackTrace.current);
+      state = AsyncValue.error(
+        AuthService.friendlyError(e),
+        StackTrace.current,
+      );
       return null;
     } catch (e) {
       state = AsyncValue.error(e.toString(), StackTrace.current);
@@ -92,7 +95,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   // ── Admin: Create Employee ───────────────────────────────
 
   /// Creates a new employee Firebase Auth account and writes to /users/{uid}.
-  /// Firebase email = [nik]@absensi.com — never shown to the end user.
+  /// Firebase email = [nik]@gaps.com — never shown to the end user.
   /// Returns the new [AppUser] on success, null on failure.
   Future<AppUser?> createEmployee({
     required String name,
@@ -118,7 +121,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       return user;
     } on FirebaseAuthException catch (e) {
-      state = AsyncValue.error(AuthService.friendlyError(e), StackTrace.current);
+      state = AsyncValue.error(
+        AuthService.friendlyError(e),
+        StackTrace.current,
+      );
       return null;
     } catch (e) {
       state = AsyncValue.error(e.toString(), StackTrace.current);
@@ -129,7 +135,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   // ── Dev seed ─────────────────────────────────────────────
 
   /// Seeds demo accounts and /settings/global defaults.
-  /// Emails: ADM001@absensi.com / EMP001@absensi.com, password: password123
+  /// Emails: ADM001@gaps.com / EMP001@gaps.com, password: password123
   Future<void> seedDemoAccounts() async {
     state = const AsyncValue.loading();
     try {
@@ -142,10 +148,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
 
       // Now that we have logged in as Admin during the _seedAccount step,
       // we have the 'auth != null' permission to write to settings/global.
-      await _dbService.initSettings(AppSettings(
-        pointValue: AppConstants.defaultPointValue,
-        allowedRadius: AppConstants.defaultGeofenceRadius,
-      ));
+      await _dbService.initSettings(
+        AppSettings(
+          pointValue: AppConstants.defaultPointValue,
+          allowedRadius: AppConstants.defaultGeofenceRadius,
+        ),
+      );
 
       // Employee (NIK: EMP001)
       await _seedAccount(
@@ -157,7 +165,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
       await _authService.signOut();
       state = const AsyncValue.data(null);
     } on FirebaseAuthException catch (e) {
-      state = AsyncValue.error(AuthService.friendlyError(e), StackTrace.current);
+      state = AsyncValue.error(
+        AuthService.friendlyError(e),
+        StackTrace.current,
+      );
     } catch (e) {
       state = AsyncValue.error(e.toString(), StackTrace.current);
     }
@@ -180,21 +191,23 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
         rethrow;
       }
     }
-    await _dbService.setUser(AppUser(
-      uid: cred.user!.uid,
-      name: name,
-      nik: nik,
-      email: email,
-      role: role,
-      totalPoints: 0,
-    ));
+    await _dbService.setUser(
+      AppUser(
+        uid: cred.user!.uid,
+        name: name,
+        nik: nik,
+        email: email,
+        role: role,
+        totalPoints: 0,
+      ),
+    );
   }
 }
 
 final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<void>>((ref) {
-  return AuthNotifier(
-    ref.watch(authServiceProvider),
-    ref.watch(databaseServiceProvider),
-  );
-});
+      return AuthNotifier(
+        ref.watch(authServiceProvider),
+        ref.watch(databaseServiceProvider),
+      );
+    });

@@ -7,6 +7,9 @@ import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/employee/employee_dashboard.dart';
 import '../screens/employee/employee_history.dart';
+import '../screens/employee/employee_report_screen.dart';
+import '../screens/employee/employee_leave_screen.dart';
+import '../screens/employee/employee_leaderboard.dart';
 import '../screens/admin/admin_dashboard.dart';
 import '../screens/admin/admin_employee_detail.dart';
 import '../screens/admin/admin_create_employee.dart';
@@ -19,6 +22,9 @@ class AppRoutes {
   static const String login = '/login';
   static const String employeeDashboard = '/employee';
   static const String employeeHistory = '/employee/history';
+  static const String employeeReport = '/employee/report';
+  static const String employeeLeave = '/employee/leave';
+  static const String employeeLeaderboard = '/employee/leaderboard';
   static const String adminDashboard = '/admin';
   static const String adminEmployeeDetail = '/admin/employee/:uid';
   static const String adminCreateEmployee = '/admin/create';
@@ -49,6 +55,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.employeeHistory,
         builder: (context, state) => const EmployeeHistoryScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.employeeReport,
+        builder: (context, state) => const EmployeeReportScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.employeeLeave,
+        builder: (context, state) => const EmployeeLeaveScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.employeeLeaderboard,
+        builder: (context, state) => const EmployeeLeaderboard(),
       ),
       GoRoute(
         path: AppRoutes.adminDashboard,

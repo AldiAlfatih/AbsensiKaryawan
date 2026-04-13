@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+import 'package:firebase_database/firebase_database.dart';
+
 import 'app.dart';
 import 'firebase_options.dart';
 
@@ -14,6 +16,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Enable offline persistence for RTDB
+  FirebaseDatabase.instance.setPersistenceEnabled(true);
 
   // Lock to portrait orientation for a focused mobile UX
   await SystemChrome.setPreferredOrientations([
