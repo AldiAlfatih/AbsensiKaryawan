@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "1095551068022",
+    "firebase_url": "https://absensikaryawan-d5b76-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "absensikaryawan-d5b76",
+    "storage_bucket": "absensikaryawan-d5b76.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1095551068022:android:97b14998139d0326f4fc57",
+        "android_client_info": {
+          "package_name": "com.absensi.absensikaryawan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxR8MSlnxD1wtMxm4kZSL6Zvrct7YVfUg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
