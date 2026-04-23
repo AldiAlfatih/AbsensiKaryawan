@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -10,6 +11,7 @@ import '../../core/constants.dart';
 import '../../core/router.dart';
 import '../../core/theme.dart';
 import '../../models/app_user.dart';
+import '../../models/attendance.dart';
 import '../../providers/attendance_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -88,7 +90,7 @@ class _EmployeeDashboardView extends ConsumerWidget {
                           ).animate().fadeIn(duration: 400.ms),
                         ),
                         _AvatarButton(
-                          name: name,
+                          profile: profile,
                           onTap: () => _showMenu(context, ref),
                         ).animate(delay: 100.ms).fadeIn(),
                       ],
@@ -397,19 +399,24 @@ class _StatusMessage extends StatelessWidget {
         subtitle = 'Kamu sudah Check-Out. Sampai jumpa besok!';
       } else {
         title = 'Sudah Absen Masuk ✅';
-        final lateText = todayRecord!.isLate ? ' (Terlambat)' : '';
-        subtitle = 'Lokasi: ${todayRecord!.campusId}$lateText\nJangan lupa Check-Out saat pulang.';
+        subtitle = 'Lokasi: ${todayRecord!.campusId}\nJangan lupa Check-Out saat pulang.';
       }
     } else {
       title = 'Siap Absen?';
       subtitle = 'Tekan tombol di bawah untuk memulai verifikasi lokasi';
     }
 
+    final isLate = alreadyIn && todayRecord != null && todayRecord!.isLate && !todayRecord!.isCheckout;
+
     return Column(
       children: [
         Text(
           title,
-          style: Theme.of(context).textTheme.headlineSmall,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: (alreadyIn && todayRecord?.isCheckout == true)
+                    ? AppColors.success
+                    : null,
+              ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 6),
@@ -421,6 +428,24 @@ class _StatusMessage extends StatelessWidget {
               ?.copyWith(color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),
+        if (isLate) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: const BoxDecoration(
+              color: AppColors.errorLight,
+              borderRadius: AppRadius.sm,
+            ),
+            child: const Text(
+              'Terlambat',
+              style: TextStyle(
+                color: AppColors.error,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -748,13 +773,14 @@ class _ActionTile extends StatelessWidget {
 // ─────────────────────────────────────────────────────────
 
 class _AvatarButton extends StatelessWidget {
-  final String name;
+  final AppUser? profile;
   final VoidCallback onTap;
 
-  const _AvatarButton({required this.name, required this.onTap});
+  const _AvatarButton({required this.profile, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final name = profile?.name ?? '?';
     final initials = name.isNotEmpty
         ? name
             .split(' ')
@@ -763,26 +789,36 @@ class _AvatarButton extends StatelessWidget {
             .join()
         : '?';
 
+    ImageProvider? avatarImage;
+    if (profile?.photoUrl != null && profile!.photoUrl!.isNotEmpty) {
+      try {
+        avatarImage = MemoryImage(base64Decode(profile!.photoUrl!));
+      } catch (_) {}
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 44,
         height: 44,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
             colors: [Color(0xFF4361EE), Color(0xFF7B5EFB)],
           ),
           shape: BoxShape.circle,
+          image: avatarImage != null ? DecorationImage(image: avatarImage, fit: BoxFit.cover) : null,
         ),
         alignment: Alignment.center,
-        child: Text(
-          initials,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 15,
-          ),
-        ),
+        child: avatarImage == null
+            ? Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
+              )
+            : null,
       ),
     );
   }
@@ -819,20 +855,32 @@ class _ProfileSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          CircleAvatar(
-            radius: 36,
-            backgroundColor: AppColors.primaryLight,
-            child: Text(
-              profile?.name.isNotEmpty == true
-                  ? profile!.name[0].toUpperCase()
-                  : '?',
-              style: const TextStyle(
-                color: AppColors.primary,
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
+          Builder(builder: (ctx) {
+            ImageProvider? avatarImageSheet;
+            if (profile?.photoUrl != null && profile!.photoUrl!.isNotEmpty) {
+              try {
+                avatarImageSheet = MemoryImage(base64Decode(profile!.photoUrl!));
+              } catch (_) {}
+            }
+
+            return CircleAvatar(
+              radius: 36,
+              backgroundColor: AppColors.primaryLight,
+              backgroundImage: avatarImageSheet,
+              child: avatarImageSheet == null
+                  ? Text(
+                      profile?.name.isNotEmpty == true
+                          ? profile!.name[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  : null,
+            );
+          }),
           const SizedBox(height: 12),
           Text(profile?.name ?? '-',
               style: Theme.of(context).textTheme.headlineSmall),
@@ -851,6 +899,16 @@ class _ProfileSheet extends StatelessWidget {
             ),
           const SizedBox(height: 24),
           Divider(indent: 20, endIndent: 20, color: AppColors.divider),
+          ListTile(
+            leading: const Icon(Icons.manage_accounts_rounded, color: AppColors.primary),
+            title: const Text('Edit Profil',
+                style: TextStyle(
+                    color: AppColors.primary, fontWeight: FontWeight.w600)),
+            onTap: () {
+              Navigator.pop(context);
+              context.push(AppRoutes.editProfile);
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.logout_rounded, color: AppColors.error),
             title: const Text('Keluar',

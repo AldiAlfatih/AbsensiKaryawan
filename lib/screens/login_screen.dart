@@ -20,8 +20,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _nikCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
-  bool _seedLoading = false;
-  String? _seedMessage;
 
   @override
   void dispose() {
@@ -49,21 +47,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _seedAccounts() async {
-    setState(() {
-      _seedLoading = true;
-      _seedMessage = null;
-    });
-    await ref.read(authNotifierProvider.notifier).seedDemoAccounts();
-    if (!mounted) return;
-    setState(() {
-      _seedLoading = false;
-      _seedMessage =
-          'Akun demo berhasil dibuat!\n'
-          'Admin  → NIK: ADM001 / 12345678\n'
-          'Karyawan → NIK: EMP001 / 1234567823';
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -242,63 +225,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ).animate(delay: 320.ms).fadeIn().slideY(begin: 0.1),
 
-                const SizedBox(height: 32),
-                const Divider(),
-                const SizedBox(height: 24),
-
-                // ── Dev seed helper ─────────────────────────────────
-                Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Mode Pengembang',
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textHint,
-                                ),
-                      ),
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        onPressed: _seedLoading ? null : _seedAccounts,
-                        icon: _seedLoading
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.textSecondary),
-                              )
-                            : const Icon(Icons.auto_fix_high_rounded,
-                                size: 18),
-                        label: const Text('Buat Akun Demo'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
-                          side: const BorderSide(color: AppColors.border),
-                          shape: const RoundedRectangleBorder(
-                              borderRadius: AppRadius.sm),
-                        ),
-                      ),
-                      if (_seedMessage != null) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.successLight,
-                            borderRadius: AppRadius.xs,
-                          ),
-                          child: Text(
-                            _seedMessage!,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: AppColors.success),
-                          ),
-                        ).animate().fadeIn(),
-                      ],
-                    ],
-                  ),
-                ).animate(delay: 400.ms).fadeIn(),
               ],
             ),
           ),

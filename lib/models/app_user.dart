@@ -8,6 +8,7 @@ class AppUser {
   final String email;
   final String role;          // 'admin' | 'employee'
   final int totalPoints;      // total_points in DB
+  final String? photoUrl;     // Base64 encoded image string or URL
 
   const AppUser({
     required this.uid,
@@ -16,6 +17,7 @@ class AppUser {
     required this.email,
     required this.role,
     this.totalPoints = 0,
+    this.photoUrl,
   });
 
   bool get isAdmin => role == 'admin';
@@ -29,6 +31,7 @@ class AppUser {
       email: data['email'] as String? ?? '',
       role: data['role'] as String? ?? 'employee',
       totalPoints: (data['total_points'] as num?)?.toInt() ?? 0,
+      photoUrl: data['photo_url'] as String?,
     );
   }
 
@@ -40,6 +43,7 @@ class AppUser {
       email: data['email'] as String? ?? '',
       role: data['role'] as String? ?? 'employee',
       totalPoints: (data['total_points'] as num?)?.toInt() ?? 0,
+      photoUrl: data['photo_url'] as String?,
     );
   }
 
@@ -50,6 +54,7 @@ class AppUser {
         'email': email,
         'role': role,
         'total_points': totalPoints,
+        if (photoUrl != null) 'photo_url': photoUrl,
       };
 
   AppUser copyWith({
@@ -59,6 +64,7 @@ class AppUser {
     String? email,
     String? role,
     int? totalPoints,
+    String? photoUrl,
   }) {
     return AppUser(
       uid: uid ?? this.uid,
@@ -67,6 +73,7 @@ class AppUser {
       email: email ?? this.email,
       role: role ?? this.role,
       totalPoints: totalPoints ?? this.totalPoints,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 }

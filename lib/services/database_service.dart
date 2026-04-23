@@ -115,6 +115,16 @@ class DatabaseService {
     await _userRef(user.uid).set(user.toMap());
   }
 
+  /// Update user profile attributes.
+  Future<void> updateUserProfile(String uid, {String? name, String? photoUrl}) async {
+    final updates = <String, dynamic>{};
+    if (name != null) updates['name'] = name;
+    if (photoUrl != null) updates['photo_url'] = photoUrl;
+    if (updates.isNotEmpty) {
+      await _userRef(uid).update(updates);
+    }
+  }
+
   /// Delete a user from /users/{uid} (Soft Delete).
   Future<void> deleteUser(String uid) async {
     await _userRef(uid).remove();
@@ -161,6 +171,22 @@ class DatabaseService {
       }
       // Newest first
       records.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return records;
+    });
+  }
+
+  /// Real-time stream of ALL attendance records (for admin recap).
+  Stream<List<Attendance>> streamAllAttendance() {
+    return _attendanceRef.onValue.map((event) {
+      final snap = event.snapshot;
+      if (!snap.exists || snap.value == null) return <Attendance>[];
+
+      final records = <Attendance>[];
+      final data = snap.value as Map<Object?, Object?>;
+      for (final key in data.keys) {
+        final childSnap = snap.child(key as String);
+        records.add(Attendance.fromSnapshot(childSnap));
+      }
       return records;
     });
   }
@@ -237,6 +263,23 @@ class DatabaseService {
     });
   }
 
+  /// Real-time stream of all reports in history (for admin global history).
+  Stream<List<Report>> streamAllReports() {
+    return _reportsRef.onValue.map((event) {
+      final snap = event.snapshot;
+      if (!snap.exists || snap.value == null) return <Report>[];
+
+      final records = <Report>[];
+      final data = snap.value as Map<Object?, Object?>;
+      for (final key in data.keys) {
+        records.add(Report.fromSnapshot(
+            key as String, snap.child(key as String).value as Map<dynamic, dynamic>));
+      }
+      records.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return records;
+    });
+  }
+
   /// Resolve a report with an admin response.
   Future<void> resolveReport(String reportId, String adminResponse) async {
     await _reportsRef.child(reportId).update({
@@ -244,6 +287,28 @@ class DatabaseService {
       'admin_response': adminResponse,
     });
   }
+
+  /// Real-time stream of reports submitted by a specific user (for employee history).
+  Stream<List<Report>> streamReportsForUser(String uid) {
+    return _reportsRef
+        .orderByChild('user_id')
+        .equalTo(uid)
+        .onValue
+        .map((event) {
+      final snap = event.snapshot;
+      if (!snap.exists || snap.value == null) return <Report>[];
+
+      final records = <Report>[];
+      final data = snap.value as Map<Object?, Object?>;
+      for (final key in data.keys) {
+        records.add(Report.fromSnapshot(
+            key as String, snap.child(key as String).value as Map<dynamic, dynamic>));
+      }
+      records.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return records;
+    });
+  }
+
 
   // ── Leave operations ─────────────────────────────────────
 
@@ -259,6 +324,22 @@ class DatabaseService {
         .equalTo('pending')
         .onValue
         .map((event) {
+      final snap = event.snapshot;
+      if (!snap.exists || snap.value == null) return <Leave>[];
+
+      final records = <Leave>[];
+      final data = snap.value as Map<Object?, Object?>;
+      for (final key in data.keys) {
+        records.add(Leave.fromSnapshot(key as String, snap.child(key as String).value as Map<dynamic, dynamic>));
+      }
+      records.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      return records;
+    });
+  }
+
+  /// Real-time stream of all leave requests (for admin global history).
+  Stream<List<Leave>> streamAllLeaves() {
+    return _leavesRef.onValue.map((event) {
       final snap = event.snapshot;
       if (!snap.exists || snap.value == null) return <Leave>[];
 

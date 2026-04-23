@@ -20,6 +20,7 @@ class _EmployeeLeaveScreenState extends ConsumerState<EmployeeLeaveScreen> {
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
   String _type = 'Sakit';
+  DateTime _filterDate = DateTime.now(); // untuk filter riwayat
 
   @override
   void dispose() {
@@ -32,18 +33,6 @@ class _EmployeeLeaveScreenState extends ConsumerState<EmployeeLeaveScreen> {
       context: context,
       firstDate: DateTime.now().subtract(const Duration(days: 7)), // allow backdate 1 week
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primary,
-              onPrimary: Colors.white,
-              onSurface: AppColors.textPrimary,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (range != null) {
@@ -62,13 +51,14 @@ class _EmployeeLeaveScreenState extends ConsumerState<EmployeeLeaveScreen> {
       return;
     }
 
-    final user = ref.read(authStateProvider).valueOrNull;
-    if (user == null) return;
+    final authUser = ref.read(authStateProvider).valueOrNull;
+    final profile = ref.read(currentUserProfileProvider).valueOrNull;
+    if (authUser == null) return;
 
     final leave = Leave(
       id: '', // db generates
-      userId: user.uid,
-      userName: user.name,
+      userId: authUser.uid,
+      userName: profile?.name ?? authUser.email ?? 'Unknown',
       type: _type,
       reason: _reasonCtrl.text.trim(),
       startDate: _startDate.millisecondsSinceEpoch,
@@ -96,8 +86,24 @@ class _EmployeeLeaveScreenState extends ConsumerState<EmployeeLeaveScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ctrlState = ref.watch(leaveControllerProvider);
     final historyAsync = ref.watch(myLeavesProvider);
+    final monthStr = DateFormat('MMMM yyyy', 'id_ID').format(_filterDate);
+
+    Future<void> pickFilterDate() async {
+      final now = DateTime.now();
+      final picked = await showDatePicker(
+        context: context,
+        initialDate: _filterDate,
+        firstDate: DateTime(now.year - 3, 1),
+        lastDate: now,
+        helpText: 'Filter Bulan & Tahun',
+        fieldLabelText: 'Tanggal (DD/MM/YYYY)',
+        locale: const Locale('id', 'ID'),
+      );
+      if (picked != null && mounted) {
+        setState(() => _filterDate = DateTime(picked.year, picked.month, 1));
+      }
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -112,18 +118,54 @@ class _EmployeeLeaveScreenState extends ConsumerState<EmployeeLeaveScreen> {
         icon: const Icon(Icons.add_rounded),
         label: const Text('Buat Pengajuan'),
       ),
-      body: historyAsync.when(
+      body: Column(
+        children: [
+          // Filter bulan
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: InkWell(
+              onTap: pickFilterDate,
+              borderRadius: AppRadius.sm,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: AppRadius.sm,
+                  border: Border.all(color: AppColors.primaryLight, width: 1.5),
+                  boxShadow: AppShadows.card,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 20),
+                      const SizedBox(width: 10),
+                      Text('Periode: $monthStr',
+                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+                    ]),
+                    const Icon(Icons.edit_calendar_rounded, color: AppColors.primary, size: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: historyAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (list) {
-          if (list.isEmpty) {
+          final filtered = list.where((l) {
+            final d = DateTime.fromMillisecondsSinceEpoch(l.timestamp);
+            return d.year == _filterDate.year && d.month == _filterDate.month;
+          }).toList();
+          if (filtered.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.event_busy_rounded, size: 64, color: AppColors.textHint),
                   const SizedBox(height: 16),
-                  Text('Belum ada riwayat pengajuan cuti/izin.', style: Theme.of(context).textTheme.bodyMedium),
+                  Text('Belum ada riwayat pengajuan di bulan ini.', style: Theme.of(context).textTheme.bodyMedium),
                 ],
               ).animate().fadeIn(),
             );
@@ -131,9 +173,9 @@ class _EmployeeLeaveScreenState extends ConsumerState<EmployeeLeaveScreen> {
 
           return ListView.builder(
             padding: const EdgeInsets.all(20),
-            itemCount: list.length,
+            itemCount: filtered.length,
             itemBuilder: (context, i) {
-              final leave = list[i];
+              final leave = filtered[i];
               final startStr = DateFormat('dd MMM yyyy').format(DateTime.fromMillisecondsSinceEpoch(leave.startDate));
               final endStr = DateFormat('dd MMM yyyy').format(DateTime.fromMillisecondsSinceEpoch(leave.endDate));
               
@@ -210,6 +252,9 @@ class _EmployeeLeaveScreenState extends ConsumerState<EmployeeLeaveScreen> {
             },
           );
         },
+      ),
+          ),
+        ],
       ),
     );
   }

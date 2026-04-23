@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ import '../../models/app_settings.dart';
 import 'admin_reports_screen.dart';
 import 'admin_settings_screen.dart';
 import 'admin_leave_screen.dart';
+import 'admin_recap_screen.dart';
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -31,6 +33,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     const _AdminDashboardView(),
     const AdminReportsScreen(),
     const AdminLeaveScreen(),
+    const AdminRecapScreen(),
     const AdminSettingsScreen(),
   ];
 
@@ -72,6 +75,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
             BottomNavigationBarItem(
               icon: Icon(Icons.event_note_rounded),
               label: 'Cuti & Izin',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.bar_chart_rounded),
+              label: 'Rekap',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings_rounded),
@@ -147,15 +154,19 @@ class _AdminDashboardViewState extends ConsumerState<_AdminDashboardView> {
                       ).animate().fadeIn(),
                     ),
                     // Admin avatar / logout
-                    _AdminAvatar(
-                      onLogout: () async {
-                        final nav = GoRouter.of(context);
-                        await ref
-                            .read(authNotifierProvider.notifier)
-                            .signOut();
-                        nav.go(AppRoutes.login);
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final profile = ref.watch(currentUserProfileProvider).valueOrNull;
+                        return _AdminAvatar(
+                          profile: profile,
+                          onLogout: () async {
+                            final nav = GoRouter.of(context);
+                            await ref.read(authNotifierProvider.notifier).signOut();
+                            nav.go(AppRoutes.login);
+                          },
+                        ).animate(delay: 100.ms).fadeIn();
                       },
-                    ).animate(delay: 100.ms).fadeIn(),
+                    ),
                   ],
                 ),
               ),
@@ -395,6 +406,13 @@ class _EmployeeTile extends StatelessWidget {
         ? employee.name.split(' ').take(2).map((w) => w[0].toUpperCase()).join()
         : '?';
 
+    ImageProvider? avatarImage;
+    if (employee.photoUrl != null && employee.photoUrl!.isNotEmpty) {
+      try {
+        avatarImage = MemoryImage(base64Decode(employee.photoUrl!));
+      } catch (_) {}
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -410,14 +428,17 @@ class _EmployeeTile extends StatelessWidget {
             CircleAvatar(
               radius: 24,
               backgroundColor: AppColors.primaryLight,
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
+              backgroundImage: avatarImage,
+              child: avatarImage == null
+                  ? Text(
+                      initials,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -462,27 +483,83 @@ class _EmployeeTile extends StatelessWidget {
 // ─────────────────────────────────────────────────────────
 
 class _AdminAvatar extends StatelessWidget {
+  final AppUser? profile;
   final VoidCallback onLogout;
-  const _AdminAvatar({required this.onLogout});
+  const _AdminAvatar({this.profile, required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onLogout,
+    ImageProvider? avatarImage;
+    if (profile?.photoUrl != null && profile!.photoUrl!.isNotEmpty) {
+      try {
+        avatarImage = MemoryImage(base64Decode(profile!.photoUrl!));
+      } catch (_) {}
+    }
+
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 48),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.md),
+      onSelected: (value) {
+        if (value == 'logout') onLogout();
+        if (value == 'edit') context.push(AppRoutes.editProfile);
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          enabled: false,
+          child: Row(
+            children: [
+              const Icon(Icons.admin_panel_settings_rounded,
+                  color: AppColors.adminAccent, size: 20),
+              const SizedBox(width: 8),
+              Text('Administrator',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.adminAccent,
+                      )),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem<String>(
+          value: 'edit',
+          child: Row(
+            children: [
+              const Icon(Icons.manage_accounts_rounded, color: AppColors.primary, size: 20),
+              const SizedBox(width: 12),
+              const Text('Edit Profil',
+                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'logout',
+          child: Row(
+            children: [
+              const Icon(Icons.logout_rounded, color: AppColors.error, size: 20),
+              const SizedBox(width: 12),
+              const Text('Keluar Akun',
+                  style: TextStyle(
+                      color: AppColors.error, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
       child: Container(
         width: 44,
         height: 44,
         decoration: BoxDecoration(
           color: AppColors.adminLight,
           borderRadius: AppRadius.sm,
+          image: avatarImage != null ? DecorationImage(image: avatarImage, fit: BoxFit.cover) : null,
         ),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Center(
-              child: Icon(Icons.admin_panel_settings_rounded,
-                  color: AppColors.adminAccent, size: 24),
-            ),
+            if (avatarImage == null)
+              Center(
+                child: Icon(Icons.admin_panel_settings_rounded,
+                    color: AppColors.adminAccent, size: 24),
+              ),
             Positioned(
               right: -2,
               top: -2,
@@ -490,7 +567,7 @@ class _AdminAvatar extends StatelessWidget {
                 width: 10,
                 height: 10,
                 decoration: const BoxDecoration(
-                  color: AppColors.error,
+                  color: AppColors.success,
                   shape: BoxShape.circle,
                 ),
               ),

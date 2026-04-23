@@ -17,60 +17,30 @@ class EmployeeHistoryScreen extends ConsumerStatefulWidget {
 class _EmployeeHistoryScreenState extends ConsumerState<EmployeeHistoryScreen> {
   DateTime _selectedDate = DateTime.now();
 
-  Future<void> _selectMonth() async {
+  Future<void> _selectDate() async {
     final now = DateTime.now();
-    // Generate up to 24 months back
-    final months = List.generate(24, (i) => DateTime(now.year, now.month - i, 1));
-    
-    final selected = await showModalBottomSheet<DateTime>(
+
+    final picked = await showDatePicker(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
-            const SizedBox(height: 16),
-            Text('Pilih Periode', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: months.length,
-                itemBuilder: (ctx, i) {
-                  final date = months[i];
-                  final label = DateFormat('MMMM yyyy', 'id_ID').format(date);
-                  final isSelected = date.year == _selectedDate.year && date.month == _selectedDate.month;
-                  
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                    title: Text(label, style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                    )),
-                    trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppColors.primary) : null,
-                    onTap: () => Navigator.pop(ctx, date),
-                  );
-                }
-              )
-            ),
-          ]
-        )
-      )
+      initialDate: _selectedDate,
+      firstDate: DateTime(now.year - 3, 1),
+      lastDate: DateTime(now.year + 1, 12, 31),
+      helpText: 'Pilih Tanggal',
+      fieldLabelText: 'Tanggal (DD/MM/YYYY)',
+      locale: const Locale('id', 'ID'),
     );
-    
-    if (selected != null) {
-      setState(() => _selectedDate = selected);
+
+    if (picked != null) {
+      if (mounted) {
+        setState(() => _selectedDate = picked);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final historyAsync = ref.watch(myAttendanceProvider);
-    final monthStr = DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate);
+    final dateStr = DateFormat('dd MMM yyyy', 'id_ID').format(_selectedDate);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -85,7 +55,7 @@ class _EmployeeHistoryScreenState extends ConsumerState<EmployeeHistoryScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
             child: InkWell(
-              onTap: _selectMonth,
+              onTap: _selectDate,
               borderRadius: AppRadius.sm,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -103,12 +73,12 @@ class _EmployeeHistoryScreenState extends ConsumerState<EmployeeHistoryScreen> {
                         const Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 22),
                         const SizedBox(width: 12),
                         Text(
-                          'Periode: $monthStr', 
+                          'Tanggal: $dateStr', 
                           style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700, fontSize: 16),
                         ),
                       ]
                     ),
-                    const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
+                    const Icon(Icons.edit_calendar_rounded, color: AppColors.primary),
                   ]
                 )
               )
@@ -122,8 +92,10 @@ class _EmployeeHistoryScreenState extends ConsumerState<EmployeeHistoryScreen> {
               data: (list) {
                 // FILTERING LOGIC
                 final filtered = list.where((item) {
-                  final d = DateTime.fromMillisecondsSinceEpoch(item.timestamp);
-                  return d.year == _selectedDate.year && d.month == _selectedDate.month;
+                  if (item.timestamp.millisecondsSinceEpoch == 0) return false;
+                  return item.timestamp.year == _selectedDate.year && 
+                         item.timestamp.month == _selectedDate.month && 
+                         item.timestamp.day == _selectedDate.day;
                 }).toList();
 
                 if (filtered.isEmpty) {

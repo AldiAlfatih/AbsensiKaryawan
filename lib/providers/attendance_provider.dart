@@ -34,7 +34,7 @@ final hasCheckedInTodayProvider = FutureProvider<bool>((ref) async {
 // ── Attendance history for current user ──────────────────
 
 /// Real-time stream of the current user's attendance history.
-final myAttendanceProvider = StreamProvider<List<Attendance>>((ref) {
+final myAttendanceProvider = StreamProvider.autoDispose<List<Attendance>>((ref) {
   final authState = ref.watch(authStateProvider);
   final user = authState.valueOrNull;
   if (user == null) return Stream.value([]);
@@ -139,6 +139,7 @@ class CheckInNotifier extends StateNotifier<CheckInState> {
         // If late, maybe we don't give points, or give 0 points? 
         // For now, let's keep giving 1 point but Admin can review `isLate` flag.
         await dbService.incrementPoints(user.uid);
+        _ref.invalidate(todayCheckInRecordProvider);
         _ref.invalidate(hasCheckedInTodayProvider);
         _ref.invalidate(currentUserProfileProvider);
         state = const CheckInSuccess();
@@ -173,7 +174,7 @@ class CheckInNotifier extends StateNotifier<CheckInState> {
       _ref.invalidate(todayCheckInRecordProvider);
       _ref.invalidate(hasCheckedInTodayProvider);
       _ref.invalidate(currentUserProfileProvider);
-      state = const CheckInSuccess();
+      state = const CheckInIdle();
     } catch (e) {
       state = CheckInError('Gagal melakukan Check-Out: $e', CheckInErrorType.unknown);
     }

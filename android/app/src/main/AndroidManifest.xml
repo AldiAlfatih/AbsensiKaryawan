@@ -8,16 +8,6 @@
     <!-- ── Internet ── -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- ── Camera (Untuk Selfie Wajah Dashboard) ── -->
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
-    <!-- ── Push Notifications ── -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <uses-permission android:name="android.permission.VIBRATE" />
-
     <application
         android:label="GAPS"
         android:name="${applicationName}"
@@ -45,14 +35,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@mipmap/ic_launcher" />
-        <intent-filter>
-            <action android:name="FLUTTER_NOTIFICATION_CLICK" />
-            <category android:name="android.intent.category.DEFAULT" />
-        </intent-filter>
     </application>
     <queries>
         <intent>

@@ -211,6 +211,11 @@ class AppTheme {
           color: AppColors.textSecondary,
           fontWeight: FontWeight.w500,
         ),
+        errorStyle: GoogleFonts.inter(
+          fontSize: 12,
+          color: AppColors.error,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surface,
@@ -228,6 +233,9 @@ class AppTheme {
         color: AppColors.divider,
         thickness: 1,
         space: 0,
+      ),
+      snackBarTheme: const SnackBarThemeData(
+        contentTextStyle: TextStyle(color: Colors.white),
       ),
     );
   }

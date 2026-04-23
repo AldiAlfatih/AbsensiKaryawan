@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/app_settings.dart';
+import '../services/database_service.dart';
 import 'auth_provider.dart';
 
 /// Real-time stream of /settings/global from Realtime Database.

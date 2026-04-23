@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -25,8 +24,12 @@ class ExportService {
       ]);
     }
 
-    // Convert to CSV
-    String csv = const ListToCsvConverter().convert(rows);
+    // Convert to CSV manually
+    final buffer = StringBuffer();
+    for (final row in rows) {
+      buffer.writeln(row.map((cell) => '"$cell"').join(','));
+    }
+    String csv = buffer.toString();
 
     // Save to temp doc dir
     final dir = await getApplicationDocumentsDirectory();
@@ -35,7 +38,12 @@ class ExportService {
     
     await file.writeAsString(csv);
     
-    // Share / Save via system
-    await Share.shareXFiles([XFile(file.path)], text: 'Laporan Rekap Poin dan Gaji Karyawan GAPS');
+    // Share / Save via system (new share_plus API)
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        text: 'Laporan Rekap Poin dan Gaji Karyawan GAPS',
+      ),
+    );
   }
 }

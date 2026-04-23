@@ -14,6 +14,20 @@ class AppConstants {
   /// Kampus 2: Jl. Pemuda No. 6, Parepare
   static const double kampus2Lat = -4.0264;
   static const double kampus2Lng = 119.6289;
+  // static const double kampus2Lat = -4.028357;
+  // static const double kampus2Lng = 119.647126;
+
+  /// Kantor 3: BTN Rama Residence, Blok F4, Parepare
+  static const double kantor3Lat = -4.0192;
+  static const double kantor3Lng = 119.6499;
+
+  /// Kantor 4: RUMAH MALA
+  static const double kantor4Lat = -4.0192;
+  static const double kantor4Lng = 119.6499;
+
+  /// Kantor 5: Bank Indonesia Wilayah Sulsel (Makassar)
+  static const double biSulselLat = -5.134019;
+  static const double biSulselLng = 119.413952;
 
   /// Fallback radius used if /settings/global is unavailable.
   /// The live value is read from the database (settings/global/allowed_radius).

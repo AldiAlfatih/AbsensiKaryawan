@@ -13,6 +13,15 @@ Stream<List<Report>> pendingReports(PendingReportsRef ref) {
   return db.streamPendingReports();
 }
 
+/// Stream of reports submitted by the currently logged-in employee.
+final myReportsProvider = StreamProvider.autoDispose<List<Report>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  final user = authState.valueOrNull;
+  if (user == null) return Stream.value([]);
+  return ref.watch(databaseServiceProvider).streamReportsForUser(user.uid);
+});
+
+
 /// Notifier to handle submitting and resolving reports.
 @riverpod
 class ReportController extends _$ReportController {
@@ -26,7 +35,7 @@ class ReportController extends _$ReportController {
     state = const AsyncValue.loading();
     try {
       final db = ref.read(databaseServiceProvider);
-      final user = ref.read(userProfileProvider).value;
+      final user = ref.read(currentUserProfileProvider).value;
 
       if (user == null) {
         throw Exception('User not logged in');

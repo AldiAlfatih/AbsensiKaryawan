@@ -92,11 +92,8 @@ class LocationService {
   ///
   /// [allowedRadiusMeters] defaults to [AppConstants.defaultGeofenceRadius]
   /// but should be overridden with the value from [settings/global].
-  Future<LocationResult> validateCheckIn({
-    double? allowedRadiusMeters,
-  }) async {
-    final radius =
-        allowedRadiusMeters ?? AppConstants.defaultGeofenceRadius;
+  Future<LocationResult> validateCheckIn({double? allowedRadiusMeters}) async {
+    final radius = allowedRadiusMeters ?? AppConstants.defaultGeofenceRadius;
 
     // 1. Permission
     final permStatus = await checkAndRequestPermission();
@@ -120,7 +117,7 @@ class LocationService {
       return MockDetected(position);
     }
 
-    // 4. Geofence
+    // 4. Geofence — cek 3 titik lokasi kantor
     // Hitung jarak ke Kampus 1
     final distanceToKampus1 = haversineDistance(
       lat1: position.latitude,
@@ -137,16 +134,50 @@ class LocationService {
       lng2: AppConstants.kampus2Lng,
     );
 
-    // Ambil jarak terdekat di antara kedua kampus tersebut
-    final isKampus1Closer = distanceToKampus1 < distanceToKampus2;
-    final distance = isKampus1Closer ? distanceToKampus1 : distanceToKampus2;
-    final campusId = isKampus1Closer ? 'Kampus 1' : 'Kampus 2';
+    // Hitung jarak ke Kantor 3 (BTN Rama Residence)
+    final distanceToKantor3 = haversineDistance(
+      lat1: position.latitude,
+      lng1: position.longitude,
+      lat2: AppConstants.kantor3Lat,
+      lng2: AppConstants.kantor3Lng,
+    );
+
+    // Hitung jarak ke Kantor 4 (Rumah Mala)
+    final distanceToKantor4 = haversineDistance(
+      lat1: position.latitude,
+      lng1: position.longitude,
+      lat2: AppConstants.kantor4Lat,
+      lng2: AppConstants.kantor4Lng,
+    );
+
+    // Hitung jarak ke Kantor 5 (Bank Indonesia Sulsel)
+    final distanceToBISulsel = haversineDistance(
+      lat1: position.latitude,
+      lng1: position.longitude,
+      lat2: AppConstants.biSulselLat,
+      lng2: AppConstants.biSulselLng,
+    );
+
+    // Tentukan kantor terdekat dari pilihan
+    final distances = {
+      'Kampus 1': distanceToKampus1,
+      'Kampus 2': distanceToKampus2,
+      'Kantor 3 (BTN Rama Residence)': distanceToKantor3,
+      'Kantor 4 (Rumah Mala)': distanceToKantor4,
+      'Bank Indonesia (Sulsel)': distanceToBISulsel,
+    };
+    final closest = distances.entries.reduce(
+      (a, b) => a.value < b.value ? a : b,
+    );
+    final distance = closest.value;
+    final campusId = closest.key;
 
     if (distance > radius) {
       return OutsideGeofence(position, distance);
     }
 
     return LocationSuccess(position, distance, campusId);
+
   }
 
   /// Haversine formula — returns distance in meters between two lat/lng pairs.
@@ -160,7 +191,8 @@ class LocationService {
     final dLat = _toRad(lat2 - lat1);
     final dLng = _toRad(lng2 - lng1);
 
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(_toRad(lat1)) *
             math.cos(_toRad(lat2)) *
             math.sin(dLng / 2) *

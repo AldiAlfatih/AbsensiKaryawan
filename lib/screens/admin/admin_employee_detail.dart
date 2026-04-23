@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,8 +6,12 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants.dart';
 import '../../core/theme.dart';
+import '../../models/app_user.dart';
 import '../../models/attendance.dart';
+import '../../models/leave.dart';
+import '../../models/report.dart';
 import '../../providers/admin_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/database_service.dart';
 
@@ -30,53 +35,19 @@ class _AdminEmployeeDetailScreenState extends ConsumerState<AdminEmployeeDetailS
     });
   }
 
-  Future<void> _selectMonth() async {
+  Future<void> _selectDate() async {
     final now = DateTime.now();
-    // Generate up to 24 months back
-    final months = List.generate(24, (i) => DateTime(now.year, now.month - i, 1));
-    
-    final selected = await showModalBottomSheet<DateTime>(
+    final picked = await showDatePicker(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10))),
-            const SizedBox(height: 16),
-            Text('Pilih Periode', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: months.length,
-                itemBuilder: (ctx, i) {
-                  final date = months[i];
-                  final label = DateFormat('MMMM yyyy', 'id_ID').format(date);
-                  final isSelected = date.year == _selectedDate.year && date.month == _selectedDate.month;
-                  
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                    title: Text(label, style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                    )),
-                    trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppColors.primary) : null,
-                    onTap: () => Navigator.pop(ctx, date),
-                  );
-                }
-              )
-            ),
-          ]
-        )
-      )
+      initialDate: _selectedDate,
+      firstDate: DateTime(now.year - 3, 1),
+      lastDate: DateTime(now.year + 1, 12, 31),
+      helpText: 'Pilih Tanggal',
+      fieldLabelText: 'Tanggal (DD/MM/YYYY)',
+      locale: const Locale('id', 'ID'),
     );
-    
-    if (selected != null) {
-      if (mounted) setState(() => _selectedDate = selected);
+    if (picked != null) {
+      if (mounted) setState(() => _selectedDate = picked);
     }
   }
 
@@ -84,8 +55,10 @@ class _AdminEmployeeDetailScreenState extends ConsumerState<AdminEmployeeDetailS
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(selectedEmployeeProfileProvider);
     final historyAsync = ref.watch(selectedEmployeeAttendanceProvider);
+    final leavesAsync = ref.watch(selectedEmployeeLeavesProvider);
+    final reportsAsync = ref.watch(selectedEmployeeReportsProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
-    final monthStr = DateFormat('MMMM yyyy', 'id_ID').format(_selectedDate);
+    final dateStr = DateFormat('dd MMM yyyy', 'id_ID').format(_selectedDate);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -94,175 +67,356 @@ class _AdminEmployeeDetailScreenState extends ConsumerState<AdminEmployeeDetailS
             const Scaffold(body: Center(child: CircularProgressIndicator())),
         error: (e, _) =>
             Scaffold(body: Center(child: Text('Error: $e'))),
-        data: (profile) => CustomScrollView(
-          slivers: [
-            // ── Hero header ──────────────────────────────────
-            SliverToBoxAdapter(
-              child: Container(
-                color: AppColors.surface,
-                padding: EdgeInsets.fromLTRB(
-                    24, MediaQuery.of(context).padding.top + 16, 24, 24),
-                child: Column(
-                  children: [
-                    Row(
+        data: (profile) => DefaultTabController(
+          length: 3,
+          child: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                // ── Hero header ──────────────────────────────────
+                SliverToBoxAdapter(
+                  child: Container(
+                    color: AppColors.surface,
+                    padding: EdgeInsets.fromLTRB(
+                        24, MediaQuery.of(context).padding.top + 16, 24, 0),
+                    child: Column(
                       children: [
-                        const BackButton(),
-                        const Spacer(),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundColor: AppColors.primaryLight,
-                      child: Text(
-                        profile?.name.isNotEmpty == true
-                            ? profile!.name[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 32,
-                        ),
-                      ),
-                    ).animate().scale(begin: const Offset(0.8, 0.8)),
-                    const SizedBox(height: 12),
-                    Text(
-                      profile?.name ?? '-',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ).animate(delay: 100.ms).fadeIn(),
-                    Text(
-                      profile?.email ?? '-',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ).animate(delay: 120.ms).fadeIn(),
-                    if ((profile?.nik ?? '').isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'NIK: ${profile!.nik}',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                        ),
-                      ),
-                    const SizedBox(height: 20),
-
-                    // ── Points card ──────────────────────────
-                    _EmployeePointsCard(
-                      points: profile?.totalPoints ?? 0,
-                      pointValue: settings?.pointValue ?? AppConstants.defaultPointValue,
-                    )
-                        .animate(delay: 160.ms)
-                        .fadeIn()
-                        .slideY(begin: 0.1),
-
-                    if (profile != null) ...[
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _deleteUser(context, ref, profile),
-                          icon: const Icon(Icons.delete_forever_rounded),
-                          label: const Text('Hapus Akun Karyawan'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.error,
-                            side: const BorderSide(color: AppColors.error),
-                          ),
-                        ),
-                      ).animate(delay: 180.ms).fadeIn(),
-                    ]
-                  ],
-                ),
-              ),
-            ),
-
-            // ── History header ───────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Riwayat Absensi',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ).animate(delay: 200.ms).fadeIn(),
-                    
-                    InkWell(
-                      onTap: _selectMonth,
-                      borderRadius: AppRadius.sm,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
-                          borderRadius: AppRadius.sm,
-                        ),
-                        child: Row(
+                        Row(
                           children: [
-                            Text(
-                              monthStr,
-                              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 16),
+                            const BackButton(),
+                            const Spacer(),
                           ],
                         ),
-                      ),
-                    ).animate(delay: 200.ms).fadeIn(),
-                  ],
-                ),
-              ),
-            ),
+                        const SizedBox(height: 8),
+                        Builder(builder: (ctx) {
+                          ImageProvider? avatarImage;
+                          if (profile?.photoUrl != null && profile!.photoUrl!.isNotEmpty) {
+                            try {
+                              avatarImage = MemoryImage(base64Decode(profile!.photoUrl!));
+                            } catch (_) {}
+                          }
+                          return CircleAvatar(
+                            radius: 40,
+                            backgroundColor: AppColors.primaryLight,
+                            backgroundImage: avatarImage,
+                            child: avatarImage == null
+                                ? Text(
+                                    profile?.name.isNotEmpty == true
+                                        ? profile!.name[0].toUpperCase()
+                                        : '?',
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 32,
+                                    ),
+                                  )
+                                : null,
+                          ).animate().scale(begin: const Offset(0.8, 0.8));
+                        }),
+                        const SizedBox(height: 12),
+                        Text(
+                          profile?.name ?? '-',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ).animate(delay: 100.ms).fadeIn(),
+                        Text(
+                          profile?.email ?? '-',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ).animate(delay: 120.ms).fadeIn(),
+                        if ((profile?.nik ?? '').isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'NIK: ${profile!.nik}',
+                              style:
+                                  Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                            ),
+                          ),
+                        const SizedBox(height: 20),
 
-            // ── History list ─────────────────────────────────
-            historyAsync.when(
-              loading: () => const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (e, _) => SliverFillRemaining(
-                child: Center(child: Text('Error: $e')),
-              ),
-              data: (list) {
-                final filtered = list.where((item) {
-                  final d = DateTime.fromMillisecondsSinceEpoch(item.timestamp);
-                  return d.year == _selectedDate.year && d.month == _selectedDate.month;
-                }).toList();
+                        // ── Points card ──────────────────────────
+                        _EmployeePointsCard(
+                          points: profile?.totalPoints ?? 0,
+                          pointValue: settings?.pointValue ?? AppConstants.defaultPointValue,
+                        )
+                            .animate(delay: 160.ms)
+                            .fadeIn()
+                            .slideY(begin: 0.1),
 
-                if (filtered.isEmpty) {
-                  return SliverFillRemaining(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.history_rounded,
-                              size: 48, color: AppColors.textHint),
-                          const SizedBox(height: 12),
-                          Text('Belum ada riwayat di bulan ini',
-                              style: Theme.of(context).textTheme.bodyMedium),
+                        if (profile != null) ...[
+                          const SizedBox(height: 24),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _deleteUser(context, ref, profile),
+                              icon: const Icon(Icons.delete_forever_rounded),
+                              label: const Text('Hapus Akun Karyawan'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.error,
+                                side: const BorderSide(color: AppColors.error),
+                              ),
+                            ),
+                          ).animate(delay: 180.ms).fadeIn(),
                         ],
-                      ).animate().fadeIn(),
-                    ),
-                  );
-                }
-
-                return SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, i) => _AdminAttendanceItem(
-                        item: filtered[i],
-                        index: i,
-                      ),
-                      childCount: filtered.length,
+                        const SizedBox(height: 24),
+                      ],
                     ),
                   ),
-                );
-              },
+                ),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SliverAppBarDelegate(
+                    const TabBar(
+                      labelColor: AppColors.primary,
+                      unselectedLabelColor: AppColors.textSecondary,
+                      indicatorColor: AppColors.primary,
+                      indicatorWeight: 3,
+                      tabs: [
+                        Tab(text: 'Absensi'),
+                        Tab(text: 'Izin'),
+                        Tab(text: 'Laporan'),
+                      ],
+                    ),
+                  ),
+                ),
+              ];
+            },
+            body: TabBarView(
+              children: [
+                // Tab 1: Absensi
+                _buildAbsensiTab(historyAsync, dateStr),
+                // Tab 2: Izin & Cuti
+                _buildIzinTab(leavesAsync, dateStr),
+                // Tab 3: Laporan
+                _buildLaporanTab(reportsAsync, dateStr),
+              ],
             ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAbsensiTab(AsyncValue<List<Attendance>> historyAsync, String dateStr) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Riwayat Absensi',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ).animate(delay: 200.ms).fadeIn(),
+                InkWell(
+                  onTap: _selectDate,
+                  borderRadius: AppRadius.sm,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: AppRadius.sm,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          dateStr,
+                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 16),
+                      ],
+                    ),
+                  ),
+                ).animate(delay: 200.ms).fadeIn(),
+              ],
+            ),
+          ),
+        ),
+        historyAsync.when(
+          loading: () => const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => SliverFillRemaining(
+            child: Center(child: Text('Error: $e')),
+          ),
+          data: (list) {
+            final filtered = list.where((item) {
+              if (item.timestamp.millisecondsSinceEpoch == 0) return false;
+              return item.timestamp.year == _selectedDate.year && 
+                     item.timestamp.month == _selectedDate.month && 
+                     item.timestamp.day == _selectedDate.day;
+            }).toList();
+
+            if (filtered.isEmpty) {
+              return SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.history_rounded,
+                          size: 48, color: AppColors.textHint),
+                      const SizedBox(height: 12),
+                      Text('Belum ada absensi di tanggal ini',
+                          style: Theme.of(context).textTheme.bodyMedium),
+                    ],
+                  ).animate().fadeIn(),
+                ),
+              );
+            }
+
+            return SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) => _AdminAttendanceItem(
+                    item: filtered[i],
+                    index: i,
+                  ),
+                  childCount: filtered.length,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIzinTab(AsyncValue<List<Leave>> leavesAsync, String dateStr) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Riwayat Izin',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ).animate().fadeIn(),
+              ],
+            ),
+          ),
+        ),
+        leavesAsync.when(
+          loading: () => const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => SliverFillRemaining(
+            child: Center(child: Text('Error: $e')),
+          ),
+          data: (list) {
+            final filtered = list.where((item) {
+              final date = DateTime.fromMillisecondsSinceEpoch(item.timestamp);
+              return date.year == _selectedDate.year && 
+                     date.month == _selectedDate.month && 
+                     date.day == _selectedDate.day;
+            }).toList();
+
+            if (filtered.isEmpty) {
+              return SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.event_note_rounded,
+                          size: 48, color: AppColors.textHint),
+                      const SizedBox(height: 12),
+                      Text('Belum ada izin di tanggal ini',
+                          style: Theme.of(context).textTheme.bodyMedium),
+                    ],
+                  ).animate().fadeIn(),
+                ),
+              );
+            }
+
+            return SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) => _AdminLeaveItemMini(
+                    leave: filtered[i],
+                    index: i,
+                  ),
+                  childCount: filtered.length,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLaporanTab(AsyncValue<List<Report>> reportsAsync, String dateStr) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Kendala Dilaporkan',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ).animate().fadeIn(),
+              ],
+            ),
+          ),
+        ),
+        reportsAsync.when(
+          loading: () => const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, _) => SliverFillRemaining(
+            child: Center(child: Text('Error: $e')),
+          ),
+          data: (list) {
+            final filtered = list.where((item) {
+              final date = DateTime.fromMillisecondsSinceEpoch(item.timestamp);
+              return date.year == _selectedDate.year && 
+                     date.month == _selectedDate.month && 
+                     date.day == _selectedDate.day;
+            }).toList();
+
+            if (filtered.isEmpty) {
+              return SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.support_agent_rounded,
+                          size: 48, color: AppColors.textHint),
+                      const SizedBox(height: 12),
+                      Text('Tidak ada laporan di tanggal ini',
+                          style: Theme.of(context).textTheme.bodyMedium),
+                    ],
+                  ).animate().fadeIn(),
+                ),
+              );
+            }
+
+            return SliverPadding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) => _AdminReportItemMini(
+                    report: filtered[i],
+                    index: i,
+                  ),
+                  childCount: filtered.length,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -506,3 +660,83 @@ class _AdminAttendanceItem extends ConsumerWidget {
   }
 }
 
+class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar _tabBar;
+  _SliverAppBarDelegate(this._tabBar);
+  @override double get minExtent => _tabBar.preferredSize.height + 8;
+  @override double get maxExtent => _tabBar.preferredSize.height + 8;
+  @override Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: AppColors.background,
+      padding: const EdgeInsets.only(top: 8),
+      child: Material(color: AppColors.surface, elevation: overlapsContent ? 1 : 0, child: _tabBar),
+    );
+  }
+  @override bool shouldRebuild(_SliverAppBarDelegate oldDelegate) => false;
+}
+
+class _AdminLeaveItemMini extends StatelessWidget {
+  final Leave leave;
+  final int index;
+  const _AdminLeaveItemMini({required this.leave, required this.index});
+  @override Widget build(BuildContext context) {
+    final date = DateTime.fromMillisecondsSinceEpoch(leave.timestamp);
+    final dateStr = DateFormat('d MMM yyyy', 'id_ID').format(date);
+    final statusColor = leave.status == 'approved' ? AppColors.success : leave.status == 'rejected' ? AppColors.error : AppColors.warning;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: AppRadius.md, boxShadow: AppShadows.card),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(dateStr, style: Theme.of(context).textTheme.titleMedium),
+              Text(leave.status.toUpperCase(), style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(leave.type.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 13)),
+          const SizedBox(height: 4),
+          Text(leave.reason, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
+    ).animate(delay: (index * 40).ms).fadeIn().slideX(begin: 0.05);
+  }
+}
+
+class _AdminReportItemMini extends StatelessWidget {
+  final Report report;
+  final int index;
+  const _AdminReportItemMini({required this.report, required this.index});
+  @override Widget build(BuildContext context) {
+    final date = DateTime.fromMillisecondsSinceEpoch(report.timestamp);
+    final dateStr = DateFormat('d MMM yyyy, HH:mm', 'id_ID').format(date);
+    final statusColor = report.status == 'resolved' ? AppColors.success : AppColors.warning;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: AppRadius.md, boxShadow: AppShadows.card),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(dateStr, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+              Text(report.status.toUpperCase(), style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(report.message, style: Theme.of(context).textTheme.bodyMedium),
+          if (report.adminResponse != null) ...[
+            const SizedBox(height: 8),
+            Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(4)), child: Text('Tanggapan: ${report.adminResponse}', style: const TextStyle(fontSize: 12, color: AppColors.primary))),
+          ]
+        ],
+      ),
+    ).animate(delay: (index * 40).ms).fadeIn().slideX(begin: 0.05);
+  }
+}

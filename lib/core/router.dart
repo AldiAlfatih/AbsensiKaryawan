@@ -13,6 +13,7 @@ import '../screens/employee/employee_leaderboard.dart';
 import '../screens/admin/admin_dashboard.dart';
 import '../screens/admin/admin_employee_detail.dart';
 import '../screens/admin/admin_create_employee.dart';
+import '../screens/shared/edit_profile_screen.dart';
 
 // ── Route paths ──────────────────────────────────────────
 
@@ -28,6 +29,7 @@ class AppRoutes {
   static const String adminDashboard = '/admin';
   static const String adminEmployeeDetail = '/admin/employee/:uid';
   static const String adminCreateEmployee = '/admin/create';
+  static const String editProfile = '/profile/edit';
 
   static String adminEmployeeDetailPath(String uid) =>
       '/admin/employee/$uid';
@@ -82,6 +84,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.adminCreateEmployee,
         builder: (context, state) => const AdminCreateEmployeeScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.editProfile,
+        builder: (context, state) => const EditProfileScreen(),
       ),
     ],
     // Auth redirect guard
