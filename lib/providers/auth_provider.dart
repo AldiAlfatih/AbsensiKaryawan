@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,7 +16,14 @@ final authServiceProvider = Provider<AuthService>((ref) {
 });
 
 final databaseServiceProvider = Provider<DatabaseService>((ref) {
-  return DatabaseService(FirebaseDatabase.instance);
+  // Explicitly specify the database URL because google-services.json was
+  // generated before the Realtime Database was created, so it doesn't
+  // contain the firebase_url field. This ensures the correct database is used.
+  return DatabaseService(FirebaseDatabase.instanceFor(
+    app: Firebase.app(),
+    databaseURL:
+        'https://absensikaryawan-3a199-default-rtdb.asia-southeast1.firebasedatabase.app',
+  ));
 });
 
 // ── Auth state ───────────────────────────────────────────
@@ -139,15 +147,14 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> seedDemoAccounts() async {
     state = const AsyncValue.loading();
     try {
-      // Admin (NIK: ADM001)
+      // Step 1: Create Admin account (auto signs-in as ADM001)
       await _seedAccount(
         nik: 'ADM001',
         name: 'Admin Utama',
         role: AppConstants.roleAdmin,
       );
 
-      // Now that we have logged in as Admin during the _seedAccount step,
-      // we have the 'auth != null' permission to write to settings/global.
+      // Step 2: Write global settings while still signed in as ADM001
       await _dbService.initSettings(
         AppSettings(
           pointValue: AppConstants.defaultPointValue,
@@ -155,14 +162,20 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
         ),
       );
 
-      // Employee (NIK: EMP001)
+      // Step 3: Sign out so the router doesn't redirect to admin dashboard
+      // while we're still seeding the second account.
+      await _authService.signOut();
+
+      // Step 4: Create Employee account
       await _seedAccount(
         nik: 'EMP001',
         name: 'Budi Santoso',
         role: AppConstants.roleEmployee,
       );
 
+      // Step 5: Sign out completely — user can now log in manually.
       await _authService.signOut();
+
       state = const AsyncValue.data(null);
     } on FirebaseAuthException catch (e) {
       state = AsyncValue.error(
