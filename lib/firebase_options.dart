@@ -45,8 +45,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '74123025201',
     projectId: 'absensikaryawan-3a199',
     storageBucket: 'absensikaryawan-3a199.firebasestorage.app',
+    databaseURL: 'https://absensikaryawan-3a199-default-rtdb.asia-southeast1.firebasedatabase.app',
   );
-  // databaseURL is REQUIRED for Realtime Database to work.
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDNb96_7BG4ft1_AoMGSFnLlHZGJWLDi44',
@@ -54,6 +54,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '74123025201',
     projectId: 'absensikaryawan-3a199',
     storageBucket: 'absensikaryawan-3a199.firebasestorage.app',
+    databaseURL: 'https://absensikaryawan-3a199-default-rtdb.asia-southeast1.firebasedatabase.app',
     iosBundleId: 'com.absensi.absensiKaryawan',
   );
   static const FirebaseOptions web = FirebaseOptions(
