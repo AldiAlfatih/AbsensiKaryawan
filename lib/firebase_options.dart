@@ -40,36 +40,29 @@ class DefaultFirebaseOptions {
   // ⚠️  REPLACE these placeholder values with your actual Firebase config!
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBxR8MSlnxD1wtMxm4kZSL6Zvrct7YVfUg',
-    appId: '1:1095551068022:android:97b14998139d0326f4fc57',
-    messagingSenderId: '1095551068022',
-    projectId: 'absensikaryawan-d5b76',
-    databaseURL: 'https://absensikaryawan-d5b76-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'absensikaryawan-d5b76.firebasestorage.app',
+    apiKey: 'AIzaSyCzSSUaEDqE-NCaSzqCdsGK3kBsdEVFVoE',
+    appId: '1:74123025201:android:f963a8c12ca6f2418dae10',
+    messagingSenderId: '74123025201',
+    projectId: 'absensikaryawan-3a199',
+    storageBucket: 'absensikaryawan-3a199.firebasestorage.app',
   );
-
   // databaseURL is REQUIRED for Realtime Database to work.
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR_IOS_API_KEY',
-    appId: 'YOUR_IOS_APP_ID',
-    messagingSenderId: 'YOUR_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-    iosClientId: 'YOUR_IOS_CLIENT_ID',
+    apiKey: 'AIzaSyDNb96_7BG4ft1_AoMGSFnLlHZGJWLDi44',
+    appId: '1:74123025201:ios:a993e4d748d44f848dae10',
+    messagingSenderId: '74123025201',
+    projectId: 'absensikaryawan-3a199',
+    storageBucket: 'absensikaryawan-3a199.firebasestorage.app',
     iosBundleId: 'com.absensi.absensiKaryawan',
-    databaseURL: 'https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com',
   );
-
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCfWpztsuJdn-jz-1aTdBelXNBqahUUsac',
-    appId: '1:1095551068022:web:cd02f22f9ce19471f4fc57',
-    messagingSenderId: '1095551068022',
-    projectId: 'absensikaryawan-d5b76',
-    authDomain: 'absensikaryawan-d5b76.firebaseapp.com',
-    databaseURL: 'https://absensikaryawan-d5b76-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'absensikaryawan-d5b76.firebasestorage.app',
-    measurementId: 'G-6903NFQ7Y6',
+    apiKey: 'AIzaSyAde30Pf98ljMjgbm1uong_YxsCiwrXtqM',
+    appId: '1:74123025201:web:2b3d1f38a9b5feb88dae10',
+    messagingSenderId: '74123025201',
+    projectId: 'absensikaryawan-3a199',
+    authDomain: 'absensikaryawan-3a199.firebaseapp.com',
+    storageBucket: 'absensikaryawan-3a199.firebasestorage.app',
+    measurementId: 'G-HHJS04CCNC',
   );
-
 }
