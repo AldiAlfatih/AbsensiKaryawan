@@ -158,6 +158,14 @@ class LocationService {
       lng2: AppConstants.biSulselLng,
     );
 
+    // Hitung jarak ke Kantor 6
+    final distanceToKantor6 = haversineDistance(
+      lat1: position.latitude,
+      lng1: position.longitude,
+      lat2: AppConstants.kantor6Lat,
+      lng2: AppConstants.kantor6Lng,
+    );
+
     // Tentukan kantor terdekat dari pilihan
     final distances = {
       'Kampus 1': distanceToKampus1,
@@ -165,6 +173,7 @@ class LocationService {
       'Kantor 3 (BTN Rama Residence)': distanceToKantor3,
       'Kantor 4 (Rumah Mala)': distanceToKantor4,
       'Bank Indonesia (Sulsel)': distanceToBISulsel,
+      'Kantor Tambahan (K6)': distanceToKantor6,
     };
     final closest = distances.entries.reduce(
       (a, b) => a.value < b.value ? a : b,

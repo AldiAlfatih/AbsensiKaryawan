@@ -29,6 +29,10 @@ class AppConstants {
   static const double biSulselLat = -5.134019;
   static const double biSulselLng = 119.413952;
 
+  /// Kantor 6: Lokasi Tambahan
+  static const double kantor6Lat = -3.9948775881157332;
+  static const double kantor6Lng = 119.64759376250012;
+
   /// Fallback radius used if /settings/global is unavailable.
   /// The live value is read from the database (settings/global/allowed_radius).
   static const double defaultGeofenceRadius = 50.0;
