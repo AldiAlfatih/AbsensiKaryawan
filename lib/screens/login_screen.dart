@@ -230,6 +230,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Generate Data Dummy (Admin & Karyawan)'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.primary),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            onPressed: isLoading
+                ? null
+                : () async {
+                    await ref
+                        .read(authNotifierProvider.notifier)
+                        .seedDemoAccounts();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Akun dummy berhasil dibuat! Silakan login dengan NIK: ADM001 atau EMP001 (Pass: password123)'),
+                          duration: Duration(seconds: 4),
+                        ),
+                      );
+                    }
+                  },
+          ),
+        ),
+      ),
     );
   }
 }
