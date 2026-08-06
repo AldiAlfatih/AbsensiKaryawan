@@ -81,6 +81,19 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
         password: password,
       );
       final profile = await _dbService.getUser(credential.user!.uid);
+
+      // BUG FIX: If profile doesn't exist in the DB (e.g. admin deleted the
+      // employee record), sign out immediately to prevent the user from being
+      // stuck in a broken auth-but-no-profile loop.
+      if (profile == null) {
+        await _authService.signOut();
+        state = AsyncValue.error(
+          'Akun tidak ditemukan. Hubungi Admin.',
+          StackTrace.current,
+        );
+        return null;
+      }
+
       state = const AsyncValue.data(null);
       return profile;
     } on FirebaseAuthException catch (e) {
@@ -111,12 +124,24 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
     required String password,
   }) async {
     state = const AsyncValue.loading();
+    FirebaseApp? secondaryApp;
     try {
       final email = nikToEmail(nik);
-      final credential = await _authService.createAccount(
+
+      // BUG FIX: createUserWithEmailAndPassword() automatically signs OUT the
+      // current user (admin) and signs IN as the newly created account.
+      // To prevent this, we create the account on an isolated secondary
+      // Firebase App instance — the main app's auth session is untouched.
+      secondaryApp = await Firebase.initializeApp(
+        name: 'create_emp_${DateTime.now().millisecondsSinceEpoch}',
+        options: Firebase.app().options,
+      );
+      final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
+      final credential = await secondaryAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+
       final user = AppUser(
         uid: credential.user!.uid,
         name: name.trim(),
@@ -137,6 +162,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
     } catch (e) {
       state = AsyncValue.error(e.toString(), StackTrace.current);
       return null;
+    } finally {
+      // Always clean up the secondary Firebase App.
+      await secondaryApp?.delete();
     }
   }
 

@@ -424,8 +424,12 @@ class _AdminEmployeeDetailScreenState extends ConsumerState<AdminEmployeeDetailS
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Permanen?'),
-        content: Text('Anda yakin ingin menghapus data ${profile.name}? Data profil akan terhapus.'),
+        title: const Text('Hapus Karyawan?'),
+        content: Text(
+          'Data profil ${profile.name} akan dihapus dari sistem. '
+          'Karyawan tidak akan bisa login lagi.\n\n'
+          'Tindakan ini tidak dapat dibatalkan.',
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           ElevatedButton(

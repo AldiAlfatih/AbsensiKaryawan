@@ -208,6 +208,9 @@ class _EmployeeDashboardView extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      // Fix: useSafeArea ensures the sheet is never hidden behind
+      // the Android system navigation bar (back/home/recents buttons).
+      useSafeArea: true,
       builder: (_) => _ProfileSheet(
         profile: profile,
         onLogout: () async {
@@ -836,11 +839,14 @@ class _ProfileSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Extra bottom padding for phones with gesture navigation (no button bar)
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom +
+        MediaQuery.of(context).padding.bottom;
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        borderRadius: AppRadius.xl,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -916,7 +922,8 @@ class _ProfileSheet extends StatelessWidget {
                     color: AppColors.error, fontWeight: FontWeight.w600)),
             onTap: onLogout,
           ),
-          const SizedBox(height: 16),
+          // Dynamic bottom padding for both gesture-nav and button-nav phones
+          SizedBox(height: bottomPadding > 0 ? bottomPadding : 24),
         ],
       ),
     );
