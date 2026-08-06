@@ -31,8 +31,8 @@ Gunakan akun berikut untuk mencoba aplikasi setelah database diinisialisasi:
 
 | Peran | NIK (Username) | Password | Catatan |
 | :--- | :--- | :--- | :--- |
-| **Admin** | `ADM001` | `password123` (atau `12345678`) | Akses penuh ke Dashboard Admin |
-| **Karyawan** | `EMP001` | `password123` (atau `12345678`) | Akun karyawan sampel (Budi Santoso) |
+| **Admin** | `ADM001` | `12345678` | Akses penuh ke Dashboard Admin |
+| **Karyawan** | `EMP001` | `12345678` | Akun karyawan sampel (Budi Santoso) |
 
 > **Catatan Teknikal Login:**
 > Pengguna melakukan login menggunakan **NIK**. Di belakang layar, aplikasi mengonversi NIK tersebut menjadi format email internal `NIK@gaps.com` untuk kebutuhan autentikasi Firebase.
