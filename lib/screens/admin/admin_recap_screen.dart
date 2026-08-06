@@ -156,8 +156,11 @@ class _AdminRecapScreenState extends ConsumerState<AdminRecapScreen> {
                             .length;
                         final tidakHadir =
                             (workDays - hadir).clamp(0, workDays);
+                        // BUG FIX: Estimasi gaji berdasarkan KEHADIRAN BULAN INI
+                        // (bukan total_points akumulatif semua waktu).
+                        // total_points adalah poin lifetime, bukan bulanan.
                         final estimasi =
-                            (settings?.pointValue ?? 35000) * emp.totalPoints;
+                            (settings?.pointValue ?? 35000) * hadir;
 
                         return _RecapCard(
                           employee: emp,
@@ -340,7 +343,7 @@ class _RecapCard extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Total Poin: ${employee.totalPoints} poin',
+                Text('Hadir bulan ini: $hadir hari',
                     style: const TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,

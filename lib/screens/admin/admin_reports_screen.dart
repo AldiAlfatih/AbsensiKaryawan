@@ -205,6 +205,17 @@ class _AdminReportsScreenState extends ConsumerState<AdminReportsScreen> {
           ),
           ElevatedButton(
             onPressed: () {
+              // BUG FIX: Validate response is not empty before resolving.
+              // An empty response leaves the employee with a blank 'Tanggapan' box.
+              if (ctrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Balasan tidak boleh kosong!'),
+                    backgroundColor: Colors.orange,
+                  ),
+                );
+                return;
+              }
               ref
                   .read(reportControllerProvider.notifier)
                   .resolveReport(reportId, ctrl.text.trim());

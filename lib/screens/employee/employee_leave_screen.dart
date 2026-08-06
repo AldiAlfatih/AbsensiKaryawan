@@ -337,8 +337,11 @@ class _EmployeeLeaveScreenState extends ConsumerState<EmployeeLeaveScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
+                        // BUG FIX: do NOT call Navigator.pop(ctx) here.
+                        // _submitLeave() already calls Navigator.pop(context)
+                        // on success. Calling it here too would cause a
+                        // double-pop navigation error.
                         _submitLeave();
-                        Navigator.pop(ctx);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
